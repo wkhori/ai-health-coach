@@ -74,6 +74,13 @@ class ProfileRepository:
         ).fetchone()
         return _row_to_dict(row)
 
+    def get_all(self) -> list[dict[str, Any]]:
+        """Return all profiles ordered by display name."""
+        rows = self.conn.execute(
+            "SELECT * FROM profiles ORDER BY display_name"
+        ).fetchall()
+        return _rows_to_list(rows)
+
     def update_last_message(self, profile_id: UUID) -> dict[str, Any] | None:
         now = datetime.now().isoformat()
         self.conn.execute(
@@ -466,6 +473,25 @@ class AlertRepository:
             "SELECT * FROM clinician_alerts WHERE status = 'pending' ORDER BY created_at DESC"
         ).fetchall()
         return _rows_to_list(rows)
+
+    def get_unacknowledged_with_patient(self) -> list[dict[str, Any]]:
+        """Return unacknowledged alerts joined with patient display_name."""
+        rows = self.conn.execute(
+            """SELECT ca.*, p.display_name as patient_name
+               FROM clinician_alerts ca
+               JOIN profiles p ON ca.user_id = p.user_id
+               WHERE ca.status = 'pending'
+               ORDER BY ca.created_at DESC"""
+        ).fetchall()
+        return _rows_to_list(rows)
+
+    def count_by_user(self, user_id: UUID) -> int:
+        """Count unacknowledged alerts for a specific user."""
+        row = self.conn.execute(
+            "SELECT COUNT(*) FROM clinician_alerts WHERE user_id = ? AND status = 'pending'",
+            (str(user_id),),
+        ).fetchone()
+        return row[0] if row else 0
 
     def acknowledge(self, alert_id: UUID, notes: str = "") -> dict[str, Any] | None:
         now = datetime.now().isoformat()
