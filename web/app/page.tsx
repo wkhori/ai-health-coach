@@ -28,7 +28,8 @@ import {
   type ApiProfile,
 } from "@/lib/api";
 import type { Goal, Message, AdherenceStats, Phase } from "@/lib/types";
-import { PanelLeft, Heart, LogOut, Loader2 } from "lucide-react";
+import Link from "next/link";
+import { PanelLeft, Heart, LogOut, Loader2, LayoutDashboard } from "lucide-react";
 
 export default function Home() {
   // ── Demo mode state ────────────────────────────────────────────
@@ -233,6 +234,16 @@ export default function Home() {
         </div>
 
         <div className="flex items-center gap-2">
+          <Link href="/dashboard">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="text-muted-foreground"
+              title="Clinician Dashboard"
+            >
+              <LayoutDashboard className="size-4" />
+            </Button>
+          </Link>
           {DEMO_MODE ? (
             <PatientSwitcher
               currentPatientId={currentPatientId}

@@ -51,10 +51,52 @@ export interface Patient {
   consentGiven: boolean;
 }
 
+// ─── Dashboard types ─────────────────────────────────────────────
+
+export interface DashboardPatient {
+  user_id: string;
+  profile_id: string;
+  display_name: string;
+  phase: Phase;
+  last_message_at: string | null;
+  active_goals_count: number;
+  total_milestones: number;
+  completed_milestones: number;
+  adherence_pct: number;
+  alerts_count: number;
+}
+
+export interface DashboardAlert {
+  id: string;
+  user_id: string;
+  patient_name: string;
+  alert_type: string;
+  urgency: "routine" | "urgent";
+  message: string;
+  created_at: string;
+}
+
+// ─── Safety result (from SSE stream) ────────────────────────────
+
+export interface SafetyResult {
+  classification: string;
+  confidence: number;
+  categories?: string[];
+  action?: "passed" | "rewritten" | "blocked" | "escalated";
+  reasoning?: string;
+}
+
 // ─── SSE event types (shared between demo and real mode) ─────────
 
 export interface SSEEvent {
-  type: "token" | "tool_start" | "tool_end" | "phase_change" | "done" | "error";
+  type:
+    | "token"
+    | "tool_start"
+    | "tool_end"
+    | "phase_change"
+    | "done"
+    | "error"
+    | "safety_result";
   content?: string;
   tool?: string;
   args?: Record<string, unknown>;

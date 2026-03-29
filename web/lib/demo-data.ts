@@ -1,4 +1,4 @@
-import { Patient } from "./types";
+import type { DashboardAlert, DashboardPatient, Patient } from "./types";
 
 /** Demo mode is active when no API URL is configured */
 export const DEMO_MODE = !process.env.NEXT_PUBLIC_API_URL;
@@ -127,3 +127,57 @@ export const patients: Record<string, Patient> = {
 };
 
 export const patientIds = Object.keys(patients) as Array<keyof typeof patients>;
+
+// ─── Dashboard demo data ─────────────────────────────────────────
+
+export const dashboardPatients: DashboardPatient[] = [
+  {
+    user_id: "sarah-001",
+    profile_id: "sarah-profile-001",
+    display_name: "Sarah Chen",
+    phase: "ACTIVE",
+    last_message_at: "2026-03-29T09:02:00Z",
+    active_goals_count: 2,
+    total_milestones: 8,
+    completed_milestones: 5,
+    adherence_pct: 85,
+    alerts_count: 0,
+  },
+  {
+    user_id: "marcus-001",
+    profile_id: "marcus-profile-001",
+    display_name: "Marcus Johnson",
+    phase: "ONBOARDING",
+    last_message_at: "2026-03-29T06:30:00Z",
+    active_goals_count: 0,
+    total_milestones: 0,
+    completed_milestones: 0,
+    adherence_pct: 0,
+    alerts_count: 0,
+  },
+  {
+    user_id: "elena-001",
+    profile_id: "elena-profile-001",
+    display_name: "Elena Rodriguez",
+    phase: "RE_ENGAGING",
+    last_message_at: "2026-03-24T14:00:00Z",
+    active_goals_count: 1,
+    total_milestones: 4,
+    completed_milestones: 1,
+    adherence_pct: 25,
+    alerts_count: 1,
+  },
+];
+
+export const dashboardAlerts: DashboardAlert[] = [
+  {
+    id: "alert-001",
+    user_id: "elena-001",
+    patient_name: "Elena Rodriguez",
+    alert_type: "disengagement",
+    urgency: "routine",
+    message:
+      "Patient has not responded for 5 days. Re-engagement attempt 1 of 3 sent.",
+    created_at: "2026-03-24T10:00:00Z",
+  },
+];
