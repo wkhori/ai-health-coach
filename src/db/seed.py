@@ -1,4 +1,4 @@
-"""Seed data script for demo purposes — no real Supabase connection required.
+"""Seed data script for demo purposes.
 
 Defines 3 test patients at different lifecycle stages with realistic
 conversation content, safety audit entries, clinician alerts, and reminders.

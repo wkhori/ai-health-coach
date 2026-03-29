@@ -35,16 +35,6 @@ def db_conn() -> sqlite3.Connection:
 
 
 @pytest.fixture
-def mock_supabase_client(db_conn) -> sqlite3.Connection:
-    """Backwards-compatible alias: returns the SQLite connection.
-
-    Tests that used mock_supabase_client now get a real SQLite connection.
-    This works because the repositories now accept sqlite3.Connection.
-    """
-    return db_conn
-
-
-@pytest.fixture
 def mock_alert_repo() -> MagicMock:
     """Mock AlertRepository."""
     repo = MagicMock()

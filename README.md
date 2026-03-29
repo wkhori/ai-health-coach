@@ -55,9 +55,9 @@ An AI-powered accountability partner for home exercise program (HEP) adherence. 
 | Language | Python 3.12+ |
 | LLM | Claude Haiku 4.5 via `langchain_anthropic` |
 | Agent Framework | LangGraph |
-| Database | SQLite (demo) / Supabase PostgreSQL (production) |
+| Database | SQLite |
 | API | FastAPI + SSE (sse-starlette) |
-| Auth | Session-based (demo) / Supabase Auth (production) |
+| Auth | Session-based token auth |
 | Frontend | Next.js 16, React 19, Tailwind CSS v4, shadcn/ui |
 | Testing | pytest + pytest-asyncio (700+ tests) |
 | Linting | ruff |
