@@ -3,7 +3,7 @@ import { Message } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { ToolCallCard } from "./tool-call-card";
 import { TypingIndicator } from "./typing-indicator";
-import { Heart } from "lucide-react";
+import { Heart, ShieldCheck } from "lucide-react";
 
 function FormatContent({ content, isUser }: { content: string; isUser: boolean }) {
   if (isUser) {
@@ -129,12 +129,20 @@ export function MessageBubble({ message }: { message: Message }) {
           </div>
         ))}
 
-        <time className="px-1 text-[10px] text-muted-foreground/60">
-          {new Date(message.created_at).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
-        </time>
+        <div className="flex items-center gap-1.5 px-1">
+          {!isUser && !message.isStreaming && message.content && (
+            <span className="flex items-center gap-0.5 text-[10px] text-emerald-500/70">
+              <ShieldCheck className="size-2.5" />
+              <span>safe</span>
+            </span>
+          )}
+          <time className="text-[10px] text-muted-foreground/60">
+            {new Date(message.created_at).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </time>
+        </div>
       </div>
     </div>
   );
