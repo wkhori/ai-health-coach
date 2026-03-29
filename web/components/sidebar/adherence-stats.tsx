@@ -22,8 +22,8 @@ function TrendIcon({ trend }: { trend: AdherenceStatsType["trend"] }) {
 function EmptyState() {
   return (
     <div className="flex items-center gap-3 rounded-lg border border-dashed border-muted-foreground/25 p-3">
-      <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-violet-100 dark:bg-violet-950">
-        <Sparkles className="size-4 text-violet-500" />
+      <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-emerald-100 dark:bg-emerald-950">
+        <Sparkles className="size-4 text-emerald-500" />
       </div>
       <p className="text-xs leading-relaxed text-muted-foreground">
         Start chatting with the coach to begin tracking your progress!
@@ -42,8 +42,8 @@ export function AdherenceStats({ stats }: { stats: AdherenceStatsType }) {
   return (
     <div className="grid grid-cols-2 gap-3">
       <div className="flex items-center gap-2.5 rounded-lg bg-muted/50 p-2.5">
-        <div className="flex size-8 items-center justify-center rounded-md bg-orange-100 dark:bg-orange-950">
-          <Flame className="size-4 text-orange-500" />
+        <div className="flex size-8 items-center justify-center rounded-md bg-amber-100 dark:bg-amber-950">
+          <Flame className="size-4 text-amber-500" />
         </div>
         <div>
           <p className="text-lg font-semibold leading-none">{stats.streak}</p>

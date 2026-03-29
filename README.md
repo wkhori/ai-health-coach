@@ -10,6 +10,7 @@ An AI-powered accountability partner for home exercise program (HEP) adherence. 
  │                              FastAPI Server                                 │
  │  POST /api/chat (SSE)  POST /api/consent  GET /api/profile  GET /api/goals │
  │  POST /api/chat/sync   GET /api/health    GET /api/conversation            │
+ │  GET /api/admin/patients  GET /api/admin/alerts  POST /api/admin/reset     │
  └──────────────────────────────────┬──────────────────────────────────────────┘
                                     │
                                     ▼
@@ -41,7 +42,7 @@ An AI-powered accountability partner for home exercise program (HEP) adherence. 
                                 │
                                 ▼
  ┌─────────────────────────────────────────────────────────────────────────────┐
- │                       Supabase PostgreSQL                                   │
+ │                            SQLite Database                                  │
  │   profiles │ goals │ milestones │ reminders │ conversation_turns           │
  │   safety_audit_log │ conversation_summaries │ clinician_alerts             │
  └─────────────────────────────────────────────────────────────────────────────┘
@@ -54,21 +55,32 @@ An AI-powered accountability partner for home exercise program (HEP) adherence. 
 | Language | Python 3.12+ |
 | LLM | Claude Haiku 4.5 via `langchain_anthropic` |
 | Agent Framework | LangGraph |
-| Database | Supabase PostgreSQL |
+| Database | SQLite (demo) / Supabase PostgreSQL (production) |
 | API | FastAPI + SSE (sse-starlette) |
-| Auth | Supabase Auth (JWT) |
-| Scheduling | pg_cron + pg_net |
-| Testing | pytest + pytest-asyncio |
+| Auth | Session-based (demo) / Supabase Auth (production) |
+| Frontend | Next.js 16, React 19, Tailwind CSS v4, shadcn/ui |
+| Testing | pytest + pytest-asyncio (700+ tests) |
 | Linting | ruff |
 | Logging | structlog |
+
+## Features
+
+- **Clinician Dashboard** — Multi-patient triage view with phase distribution, safety alerts, adherence tracking
+- **4-Week Milestone Timeline** — Visual journey map showing patient progress through goal milestones
+- **Live Demo Controls** — Real-time panel showing safety classifications, tool calls, and phase state
+- **SSE Streaming Chat** — Token-by-token streaming with tool call visualization
+- **Two-Tier Safety System** — Regex pre-filter + LLM classifier on every outbound message
+- **Phase-Based Routing** — Deterministic state machine (PENDING → ONBOARDING → ACTIVE → RE_ENGAGING → DORMANT)
+- **Consent Gate** — Verified on every interaction before any coaching occurs
+- **Demo Mode** — Fully functional offline demo with hardcoded patient data
 
 ## Setup
 
 ### Prerequisites
 
 - Python 3.12+
-- A Supabase project (for production use)
-- An Anthropic API key
+- Node.js 18+ (for frontend)
+- An Anthropic API key (for real mode; demo mode works without it)
 
 ### Installation
 
@@ -92,31 +104,45 @@ cp .env.example .env
 ### Environment Variables
 
 ```bash
-# Required
-SUPABASE_URL=https://xxxxx.supabase.co
-SUPABASE_ANON_KEY=eyJ...
-SUPABASE_SERVICE_ROLE_KEY=eyJ...
-SUPABASE_DB_URL=postgresql://...@db.xxxxx.supabase.co:5432/postgres
+# Required (for real mode)
 ANTHROPIC_API_KEY=sk-ant-...
 
 # Optional
+DATABASE_PATH=health_coach.db          # SQLite path (default: health_coach.db)
+LOG_LEVEL=INFO                         # Logging level
+CORS_ORIGINS=http://localhost:3000     # Allowed CORS origins
+
+# Optional (LangSmith observability)
 LANGCHAIN_TRACING_V2=true
 LANGCHAIN_API_KEY=lsv2_...
 LANGCHAIN_PROJECT=ai-health-coach
-LOG_LEVEL=INFO
 ```
+
+### Frontend
+
+```bash
+cd web
+npm install
+npm run dev    # Start dev server on :3000
+npm run build  # Production build
+```
+
+Set `NEXT_PUBLIC_API_URL=http://localhost:8000` to connect to the backend. Without it, the frontend runs in demo mode with hardcoded data.
 
 ### Seed Data
 
 ```bash
-# View seed data summary (no DB required)
+# Seed the database with 3 demo patients
 python -m src.db.seed
 
-# Replay a patient conversation
-python -m src.cli replay sarah
-python -m src.cli replay marcus
-python -m src.cli replay elena
+# Start the API server
+uvicorn src.main:app --reload --port 8000
 ```
+
+Demo patients:
+- **Sarah Chen** (ACTIVE) — 2 confirmed goals, 12-day streak, 85% adherence
+- **Marcus Johnson** (ONBOARDING) — 1 unconfirmed goal, new patient
+- **Elena Rodriguez** (RE_ENGAGING) — 2 paused goals, 5 days inactive
 
 ## API Documentation
 
@@ -131,17 +157,20 @@ python -m src.cli replay elena
 | `GET` | `/api/profile` | JWT | Get user profile + phase |
 | `GET` | `/api/goals` | JWT | Get user goals + milestones |
 | `GET` | `/api/conversation` | JWT | Paginated conversation history |
-| `POST` | `/api/webhooks/scheduled-message` | Service Role | Scheduled message webhook |
+| `GET` | `/api/admin/patients` | No | All patients with stats (demo) |
+| `GET` | `/api/admin/alerts` | No | Unacknowledged clinician alerts |
+| `POST` | `/api/admin/reset` | No | Re-seed database |
 
 ### SSE Event Types
 
 ```
-token        — Streamed token from LLM response
-tool_start   — Tool execution starting
-tool_end     — Tool execution completed
-phase_change — Patient phase transition
-done         — Response complete
-error        — Error occurred
+token          — Streamed token from LLM response
+tool_start     — Tool execution starting
+tool_end       — Tool execution completed
+phase_change   — Patient phase transition
+safety_result  — Safety classification result
+done           — Response complete
+error          — Error occurred
 ```
 
 ### Rate Limiting
@@ -195,29 +224,20 @@ Crisis responses are hard-coded strings (never LLM-generated) that include the 9
 ## Testing
 
 ```bash
-# Run all tests
-pytest
+# Run all tests (700+)
+pytest tests/
 
 # Run with verbose output
-pytest -v
+pytest tests/ -v
 
 # Run specific test file
 pytest tests/test_safety.py
 
 # Run with coverage
-pytest --cov=src --cov-report=term-missing
+pytest tests/ --cov=src --cov-report=term-missing
 
 # Stop on first failure
-pytest -x
-
-# Run safety tests only
-pytest tests/test_safety.py tests/test_adversarial.py tests/test_safety_node.py
-
-# Run edge case tests
-pytest tests/test_edge_cases.py
-
-# Run full journey tests
-pytest tests/test_journey.py
+pytest tests/ -x
 ```
 
 ### Test Structure
@@ -239,7 +259,8 @@ tests/
   test_re_engage.py           # Re-engagement subgraph
   test_safety_node.py         # Safety node in graph context
   test_summarize.py           # Summarization logic
-  test_api.py                 # FastAPI endpoints
+  test_api.py                 # FastAPI endpoints + admin endpoints
+  test_repositories.py        # Database repository tests
   test_scheduling.py          # Scheduling logic
   adversarial_prompts.json    # Adversarial prompt bank (100+ prompts)
 ```

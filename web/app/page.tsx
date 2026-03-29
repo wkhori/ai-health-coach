@@ -240,12 +240,13 @@ export default function Home() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Link href="/dashboard">
+          <Link href="/dashboard" aria-label="Clinician Dashboard">
             <Button
               variant="ghost"
               size="icon-sm"
               className="text-muted-foreground"
               title="Clinician Dashboard"
+              aria-label="Clinician Dashboard"
             >
               <LayoutDashboard className="size-4" />
             </Button>
