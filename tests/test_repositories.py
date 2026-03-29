@@ -1,11 +1,8 @@
 """Comprehensive integration tests for all 8 SQLite repository classes."""
 
 import sqlite3
-import time
 from datetime import datetime, timedelta
 from uuid import UUID, uuid4
-
-import pytest
 
 from src.db.repositories import (
     AlertRepository,
@@ -23,7 +20,6 @@ from src.models.enums import (
     SafetyAction,
     SafetyClassificationType,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -229,8 +225,8 @@ class TestGoalRepository:
         uid = _seed_user(db_conn)
         repo = GoalRepository(db_conn)
 
-        g1 = repo.create(UUID(uid), "Goal A")
-        g2 = repo.create(UUID(uid), "Goal B")
+        repo.create(UUID(uid), "Goal A")
+        repo.create(UUID(uid), "Goal B")
 
         goals = repo.get_by_user(UUID(uid))
 
@@ -250,7 +246,7 @@ class TestGoalRepository:
         uid = _seed_user(db_conn)
         repo = GoalRepository(db_conn)
 
-        g1 = repo.create(UUID(uid), "Active Goal")
+        repo.create(UUID(uid), "Active Goal")
         g2 = repo.create(UUID(uid), "Paused Goal")
 
         # Manually pause g2
@@ -267,7 +263,7 @@ class TestGoalRepository:
         repo = GoalRepository(db_conn)
 
         g1 = repo.create(UUID(uid), "Goal X")
-        g2 = repo.create(UUID(uid), "Goal Y")
+        repo.create(UUID(uid), "Goal Y")
 
         repo.confirm_goal(UUID(g1["id"]))
 
@@ -912,7 +908,7 @@ class TestAlertRepository:
         repo = AlertRepository(db_conn)
 
         a1 = repo.create(UUID(uid), "issue1", message="First")
-        a2 = repo.create(UUID(uid), "issue2", message="Second")
+        repo.create(UUID(uid), "issue2", message="Second")
 
         repo.acknowledge(UUID(a1["id"]), notes="Reviewed")
 

@@ -8,15 +8,15 @@ Minimum 15 tests required covering:
 - Edge cases (invalid enums, missing fields)
 """
 
-from datetime import date, datetime
+from datetime import datetime
 from uuid import UUID, uuid4
 
 import pytest
+from pydantic import ValidationError
 
 from src.models.alert import ClinicianAlert
 from src.models.enums import (
     AlertUrgency,
-    InteractionType,
     PhaseState,
     SafetyAction,
     SafetyClassificationType,
@@ -297,12 +297,12 @@ class TestModelEdgeCases:
 
     def test_goal_missing_required_fields(self):
         """Goal without user_id or title raises ValidationError."""
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             Goal()  # type: ignore[call-arg]
 
     def test_patient_profile_missing_required_fields(self):
         """PatientProfile without required fields raises ValidationError."""
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             PatientProfile()  # type: ignore[call-arg]
 
     def test_safety_result_boundary_confidence_zero(self):

@@ -11,7 +11,6 @@ from langgraph.graph import END, StateGraph
 from langgraph.prebuilt import ToolNode
 
 from src.graph.state import HealthCoachState
-
 from src.prompts.onboarding import ONBOARDING_PROMPT
 from src.prompts.system import SYSTEM_PROMPT
 from src.tools.definitions import set_goal

@@ -12,7 +12,6 @@ from langgraph.graph import END, StateGraph
 from langgraph.prebuilt import ToolNode
 
 from src.graph.state import HealthCoachState
-
 from src.prompts.re_engaging import RE_ENGAGING_PROMPT
 from src.prompts.system import SYSTEM_PROMPT
 from src.tools.definitions import get_program_summary, set_goal
