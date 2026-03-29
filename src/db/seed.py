@@ -1,4 +1,4 @@
-"""Seed data script for demo purposes — no real Supabase connection required.
+"""Seed data script for demo purposes.
 
 Defines 3 test patients at different lifecycle stages with realistic
 conversation content, safety audit entries, clinician alerts, and reminders.
@@ -9,10 +9,13 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-import sqlite3
 import sys
 from datetime import datetime, timedelta
+from typing import TYPE_CHECKING
 from uuid import UUID
+
+if TYPE_CHECKING:
+    import sqlite3
 
 import structlog
 

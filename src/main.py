@@ -171,6 +171,42 @@ class AuthResponse(BaseModel):
     user: dict
 
 
+class AdminPatient(BaseModel):
+    user_id: str
+    profile_id: str
+    display_name: str
+    phase: str
+    last_message_at: str | None
+    active_goals_count: int
+    total_milestones: int
+    completed_milestones: int
+    adherence_pct: int
+    alerts_count: int
+
+
+class AdminPatientsResponse(BaseModel):
+    patients: list[AdminPatient]
+
+
+class AdminAlert(BaseModel):
+    id: str
+    user_id: str
+    patient_name: str
+    alert_type: str
+    urgency: str
+    message: str
+    created_at: str
+
+
+class AdminAlertsResponse(BaseModel):
+    alerts: list[AdminAlert]
+
+
+class AdminResetResponse(BaseModel):
+    status: str
+    patients_count: int
+
+
 # --- Auth helpers ---
 
 
@@ -446,6 +482,7 @@ async def chat_stream(
     config = {"configurable": {"thread_id": user_id}}
 
     async def event_generator():
+        safety_emitted = False
         try:
             async for event in graph.astream_events(graph_input, config, version="v2"):
                 kind = event.get("event", "")
@@ -484,15 +521,31 @@ async def chat_stream(
 
                 elif kind == "on_chain_end":
                     output = event.get("data", {}).get("output", {})
-                    if isinstance(output, dict) and "phase" in output:
-                        new_phase = output["phase"]
-                        yield {
-                            "event": "message",
-                            "data": json.dumps({
-                                "type": "phase_change",
-                                "phase": new_phase,
-                            }),
-                        }
+                    if isinstance(output, dict):
+                        if "phase" in output:
+                            new_phase = output["phase"]
+                            yield {
+                                "event": "message",
+                                "data": json.dumps({
+                                    "type": "phase_change",
+                                    "phase": new_phase,
+                                }),
+                            }
+                        sr = output.get("safety_result")
+                        if (
+                            not safety_emitted
+                            and isinstance(sr, dict)
+                            and sr.get("classification")
+                            and sr.get("reasoning") != "No assistant message to check."
+                        ):
+                            safety_emitted = True
+                            yield {
+                                "event": "message",
+                                "data": json.dumps({
+                                    "type": "safety_result",
+                                    "result": sr,
+                                }),
+                            }
 
             yield {
                 "event": "message",
@@ -703,3 +756,122 @@ async def handle_scheduled_message(
         "response": result.get("response_text", ""),
         "user_id": body.user_id,
     }
+
+
+# --- Admin endpoints (no auth — demo only) ---
+
+
+@app.get("/api/admin/patients", response_model=AdminPatientsResponse)
+async def admin_patients() -> AdminPatientsResponse:
+    """Return all patient profiles with aggregated stats."""
+    from src.db.client import get_db
+    from src.db.repositories import (
+        AlertRepository,
+        GoalRepository,
+        ProfileRepository,
+    )
+
+    settings = get_settings()
+    conn = get_db(settings.database_path)
+    profile_repo = ProfileRepository(conn)
+    goal_repo = GoalRepository(conn)
+    alert_repo = AlertRepository(conn)
+
+    profiles = profile_repo.get_all()
+    result: list[AdminPatient] = []
+
+    for p in profiles:
+        uid = UUID(p["user_id"])
+        goals = goal_repo.get_active_goals(uid)
+        total_milestones = 0
+        completed_milestones = 0
+        for g in goals:
+            for m in g.get("milestones", []):
+                total_milestones += 1
+                if m.get("completed"):
+                    completed_milestones += 1
+
+        adherence_pct = (
+            round(completed_milestones / total_milestones * 100)
+            if total_milestones > 0
+            else 0
+        )
+
+        result.append(
+            AdminPatient(
+                user_id=p["user_id"],
+                profile_id=p["id"],
+                display_name=p.get("display_name") or "Unknown",
+                phase=p.get("phase", "PENDING"),
+                last_message_at=p.get("last_message_at"),
+                active_goals_count=len(goals),
+                total_milestones=total_milestones,
+                completed_milestones=completed_milestones,
+                adherence_pct=adherence_pct,
+                alerts_count=alert_repo.count_by_user(uid),
+            )
+        )
+
+    return AdminPatientsResponse(patients=result)
+
+
+@app.get("/api/admin/alerts", response_model=AdminAlertsResponse)
+async def admin_alerts() -> AdminAlertsResponse:
+    """Return all unacknowledged clinician alerts with patient names."""
+    from src.db.client import get_db
+    from src.db.repositories import AlertRepository
+
+    settings = get_settings()
+    conn = get_db(settings.database_path)
+    alert_repo = AlertRepository(conn)
+    alerts = alert_repo.get_unacknowledged_with_patient()
+
+    return AdminAlertsResponse(
+        alerts=[
+            AdminAlert(
+                id=a["id"],
+                user_id=a["user_id"],
+                patient_name=a.get("patient_name", "Unknown"),
+                alert_type=a.get("alert_type", ""),
+                urgency=a.get("urgency", "routine"),
+                message=a.get("message", ""),
+                created_at=a.get("created_at", ""),
+            )
+            for a in alerts
+        ]
+    )
+
+
+@app.post("/api/admin/reset", response_model=AdminResetResponse)
+async def admin_reset() -> AdminResetResponse:
+    """Re-seed the database for demo recording."""
+    from src.db.client import get_db
+    from src.db.seed import seed_db
+
+    settings = get_settings()
+    conn = get_db(settings.database_path)
+
+    # Drop all data
+    tables = [
+        "clinician_alerts",
+        "safety_audit_log",
+        "conversation_summaries",
+        "conversation_turns",
+        "reminders",
+        "milestones",
+        "goals",
+        "profiles",
+        "sessions",
+        "users",
+    ]
+    for table in tables:
+        conn.execute(f"DELETE FROM {table}")  # noqa: S608
+    conn.commit()
+
+    # Re-seed
+    seed_db(conn)
+
+    # Count patients
+    count = conn.execute("SELECT COUNT(*) FROM profiles").fetchone()[0]
+
+    return AdminResetResponse(status="reset_complete", patients_count=count)

@@ -15,7 +15,6 @@ from src.main import (
     get_current_user,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -455,9 +454,9 @@ class TestGetCurrentUser:
         with (
             patch("src.main.get_settings", return_value=_fake_settings()),
             patch("src.db.client.get_db", return_value=test_db),
+            pytest.raises(HTTPException) as exc_info,
         ):
-            with pytest.raises(HTTPException) as exc_info:
-                await get_current_user(request)
+            await get_current_user(request)
         assert exc_info.value.status_code == 401
 
     @pytest.mark.asyncio

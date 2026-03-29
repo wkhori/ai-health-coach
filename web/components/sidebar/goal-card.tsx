@@ -14,15 +14,21 @@ import {
   Clock,
 } from "lucide-react";
 
-function MilestoneProgress({ milestones }: { milestones: Goal["milestones"] }) {
+const WEEK_LABELS = ["Foundation", "Building", "Strengthening", "Achievement"];
+
+function MilestoneTimeline({
+  milestones,
+}: {
+  milestones: Goal["milestones"];
+}) {
   const completed = milestones.filter((m) => m.completed).length;
   const total = milestones.length;
   const percent = total > 0 ? (completed / total) * 100 : 0;
-  // Find the current milestone (first incomplete)
   const currentIndex = milestones.findIndex((m) => !m.completed);
 
   return (
     <div className="space-y-2">
+      {/* Progress bar */}
       <div className="flex items-center justify-between text-xs text-muted-foreground">
         <span>
           {completed} of {total} milestones
@@ -35,41 +41,83 @@ function MilestoneProgress({ milestones }: { milestones: Goal["milestones"] }) {
           style={{ width: `${percent}%` }}
         />
       </div>
-      <div className="space-y-1">
-        {milestones.map((milestone, i) => (
-          <div
-            key={i}
-            className={cn(
-              "flex items-center gap-2 rounded-md px-1.5 py-0.5 text-xs transition-colors",
-              i === currentIndex && "bg-emerald-50 dark:bg-emerald-950/30"
-            )}
-          >
-            {milestone.completed ? (
-              <CheckCircle2 className="size-3.5 shrink-0 text-emerald-500" />
-            ) : i === currentIndex ? (
-              <Circle className="size-3.5 shrink-0 text-emerald-500" />
-            ) : (
-              <Circle className="size-3.5 shrink-0 text-muted-foreground/30" />
-            )}
-            <span
-              className={cn(
-                "leading-tight",
-                milestone.completed
-                  ? "text-muted-foreground line-through"
-                  : i === currentIndex
-                    ? "font-medium text-foreground"
-                    : "text-muted-foreground"
+
+      {/* Vertical timeline */}
+      <div className="relative ml-1 mt-3">
+        {milestones.map((milestone, i) => {
+          const isCurrent = i === currentIndex;
+          const isFuture = currentIndex >= 0 ? i > currentIndex : !milestone.completed;
+          const weekLabel = WEEK_LABELS[milestone.week - 1] ?? `Week ${milestone.week}`;
+
+          return (
+            <div key={i} className="relative flex gap-3">
+              {/* Connector line */}
+              {i < milestones.length - 1 && (
+                <div
+                  className={cn(
+                    "absolute left-[7px] top-[18px] w-0.5 h-[calc(100%-4px)]",
+                    milestone.completed
+                      ? "bg-emerald-400 dark:bg-emerald-600"
+                      : "bg-muted"
+                  )}
+                />
               )}
-            >
-              {milestone.title}
-            </span>
-            {i === currentIndex && !milestone.completed && (
-              <span className="ml-auto text-[10px] text-emerald-600 dark:text-emerald-400">
-                current
-              </span>
-            )}
-          </div>
-        ))}
+
+              {/* Node */}
+              <div className="relative z-10 shrink-0 pt-0.5">
+                {milestone.completed ? (
+                  <CheckCircle2 className="size-4 text-emerald-500" />
+                ) : isCurrent ? (
+                  <div className="flex size-4 items-center justify-center rounded-full border-2 border-emerald-500 bg-background">
+                    <div className="size-1.5 rounded-full bg-emerald-500" />
+                  </div>
+                ) : (
+                  <Circle className="size-4 text-muted-foreground/30" />
+                )}
+              </div>
+
+              {/* Content */}
+              <div
+                className={cn(
+                  "mb-3 flex-1 rounded-md px-2 py-1.5 transition-colors",
+                  isCurrent && "bg-emerald-50 dark:bg-emerald-950/30"
+                )}
+              >
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className={cn(
+                      "text-[10px] font-semibold uppercase tracking-wider",
+                      milestone.completed
+                        ? "text-emerald-600 dark:text-emerald-400"
+                        : isCurrent
+                          ? "text-emerald-600 dark:text-emerald-400"
+                          : "text-muted-foreground/50"
+                    )}
+                  >
+                    Wk {milestone.week}: {weekLabel}
+                  </span>
+                  {isCurrent && (
+                    <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[9px] font-medium text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300">
+                      current
+                    </span>
+                  )}
+                </div>
+                <p
+                  className={cn(
+                    "mt-0.5 text-xs leading-tight",
+                    milestone.completed
+                      ? "text-muted-foreground line-through"
+                      : isFuture
+                        ? "text-muted-foreground/60"
+                        : "text-foreground"
+                  )}
+                >
+                  {milestone.title}
+                </p>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -127,7 +175,7 @@ export function GoalCard({ goal }: { goal: Goal }) {
       </CardHeader>
       <CardContent>
         {expanded ? (
-          <MilestoneProgress milestones={goal.milestones} />
+          <MilestoneTimeline milestones={goal.milestones} />
         ) : (
           <p className="text-xs text-muted-foreground">
             {completed} of {total} milestones complete

@@ -16,7 +16,7 @@ from pathlib import Path
 import pytest
 
 from src.db.client import get_db, reset_db
-from src.db.schema import SCHEMA_SQL, init_db
+from src.db.schema import init_db
 from src.db.seed import (
     _hash_password,
     get_seed_data,
@@ -286,7 +286,7 @@ class TestSchema:
             "INSERT INTO profiles (id, user_id, display_name) VALUES (?, ?, ?)",
             ("p1", "u1", "Original"),
         )
-        original = db_conn.execute(
+        db_conn.execute(
             "SELECT updated_at FROM profiles WHERE id = 'p1'"
         ).fetchone()["updated_at"]
 
@@ -499,7 +499,7 @@ class TestSeedDb:
             salt_hex, hash_hex = stored_hash.split(":")
             salt = bytes.fromhex(salt_hex)
             computed = hashlib.pbkdf2_hmac(
-                "sha256", "password123".encode(), salt, 100000
+                "sha256", b"password123", salt, 100000
             )
             assert computed.hex() == hash_hex
 
@@ -856,5 +856,5 @@ class TestHashPassword:
         stored = _hash_password("correct_password")
         salt_hex, hash_hex = stored.split(":")
         salt = bytes.fromhex(salt_hex)
-        computed = hashlib.pbkdf2_hmac("sha256", "wrong_password".encode(), salt, 100000)
+        computed = hashlib.pbkdf2_hmac("sha256", b"wrong_password", salt, 100000)
         assert computed.hex() != hash_hex

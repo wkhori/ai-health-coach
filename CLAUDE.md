@@ -13,10 +13,9 @@ Auto-generated from locked presearch decisions. All rules are BINDING during imp
 | LLM Integration | langchain_anthropic.ChatAnthropic | >=0.3.0 | D10 |
 | Agent Framework | LangGraph | >=0.3.0 | D9 |
 | Tool Calling | .bind_tools() + ToolNode | langgraph.prebuilt | D10 |
-| Database | Supabase PostgreSQL | -- | D11 |
-| Auth | Supabase Auth | -- | D11 |
-| Scheduling | pg_cron + pg_net | Supabase native | D11 |
-| Checkpointer | AsyncPostgresSaver | langgraph-checkpoint-postgres >=2.0.0 | D22 |
+| Database | SQLite | sqlite3 stdlib | D11 |
+| Auth | Session-based token auth | -- | D11 |
+| Checkpointer | MemorySaver | langgraph.checkpoint.memory | D22 |
 | API Framework | FastAPI | >=0.115.0 | D12 |
 | Streaming | SSE via sse-starlette | >=2.0.0 | D14 |
 | Deployment | Railway | Hobby plan | D12 |
@@ -24,9 +23,9 @@ Auto-generated from locked presearch decisions. All rules are BINDING during imp
 | Testing | pytest + pytest-asyncio | >=8.0.0 | D18 |
 | Linting | ruff | >=0.8.0 | -- |
 | Type Checking | pyright | >=1.1.390 | -- |
+| Frontend | Next.js 16, React 19, Tailwind CSS v4, shadcn/ui | -- | -- |
 
 **DO NOT** use the raw Anthropic SDK (`anthropic` package) for LLM calls. Always use `langchain_anthropic.ChatAnthropic`.
-**DO NOT** use Prisma Python (archived April 2025).
 **DO NOT** use GPT or any non-Anthropic model.
 
 ---
@@ -35,16 +34,16 @@ Auto-generated from locked presearch decisions. All rules are BINDING during imp
 
 ```bash
 # Development
-uvicorn src.main:app --reload --port 8000        # Start dev server
+uvicorn src.main:app --reload --port 8000        # Start backend dev server
+cd web && npm run dev                              # Start frontend dev server
 python -m src.db.seed                              # Seed demo data
-python -m src.cli replay <patient_id>              # Replay conversation
 
 # Testing
-pytest                                             # Run all tests
+pytest tests/                                      # Run all tests
 pytest tests/test_safety.py                        # Run safety tests only
 pytest tests/test_adversarial.py                   # Run adversarial suite
-pytest --cov=src --cov-report=term-missing         # Coverage report
-pytest -x                                          # Stop on first failure
+pytest tests/ --cov=src --cov-report=term-missing  # Coverage report
+pytest tests/ -x                                   # Stop on first failure
 
 # Linting & Type Checking
 ruff check src/ tests/                             # Lint
@@ -52,8 +51,9 @@ ruff check src/ tests/ --fix                       # Auto-fix lint issues
 ruff format src/ tests/                            # Format code
 pyright src/                                       # Type check
 
-# Database
-python -m src.db.seed                              # Run seed script
+# Frontend
+cd web && npm run build                            # Production build
+cd web && npm run dev                              # Dev server on :3000
 ```
 
 ---
@@ -72,7 +72,7 @@ python -m src.db.seed                              # Run seed script
 ```
 PENDING -> ONBOARDING     : consent_given_at is not null
 ONBOARDING -> ACTIVE      : at least 1 goal with confirmed=true
-ACTIVE -> RE_ENGAGING     : no user message for 48h (pg_cron check)
+ACTIVE -> RE_ENGAGING     : no user message for 48h
 RE_ENGAGING -> ACTIVE     : user sends any message
 RE_ENGAGING -> DORMANT    : 3 re-engagement attempts with no response
 DORMANT -> RE_ENGAGING    : user sends any message
@@ -97,9 +97,7 @@ DORMANT -> RE_ENGAGING    : user sends any message
 - If the LLM attempts to call a tool not in the bound set, ToolNode rejects it.
 
 ### Checkpointer
-- Use `AsyncPostgresSaver` from `langgraph-checkpoint-postgres`.
-- Connect to Supabase via **direct connection** (port 5432), NOT the pooler (port 6543).
-- The checkpointer auto-creates its tables on `setup()`. Call this at app startup.
+- Uses `MemorySaver` from `langgraph.checkpoint.memory` for in-memory conversation state.
 - Thread ID = patient's profile ID for conversation continuity.
 
 ---
@@ -108,27 +106,15 @@ DORMANT -> RE_ENGAGING    : user sends any message
 
 ### Schema
 - Exactly 8 tables: `profiles`, `goals`, `milestones`, `reminders`, `conversation_turns`, `safety_audit_log`, `conversation_summaries`, `clinician_alerts`.
-- All tables use `UUID` primary keys via `gen_random_uuid()`.
-- All tables have `created_at TIMESTAMPTZ DEFAULT now()`.
-- `profiles` has `updated_at` trigger.
-- Use CHECK constraints for enums in PostgreSQL (phase, role, classification, urgency, action_taken, tier).
-
-### Row Level Security (RLS)
-- RLS is enabled on ALL tables.
-- `profiles`, `goals`, `milestones`, `reminders`, `conversation_turns`, `conversation_summaries`: users can read/write their own data (matched via `auth.uid()` -> `profiles.user_id`).
-- `safety_audit_log`, `clinician_alerts`: service_role access only. Users cannot read or write these tables.
-- Always use the service_role client for safety logging and clinician alerts.
-- Always use the user client (with JWT) for patient-facing operations.
-
-### Migrations
-- Store SQL migrations in `supabase/migrations/`.
-- Migration files are numbered sequentially: `001_create_tables.sql`, `002_create_rls.sql`, etc.
-- Never modify a migration after it has been applied. Create a new migration instead.
+- All tables use UUID text primary keys.
+- All tables have `created_at` timestamp.
+- Database is SQLite via `src/db/client.py` (`get_db()` returns a `sqlite3.Connection`).
+- Schema defined in `src/db/schema.py` (`init_db(conn)`).
 
 ### Data Access
 - All database operations go through repository classes in `src/db/repositories.py`.
 - Never write raw SQL in graph nodes, tools, or API routes.
-- Repositories use the Supabase client, not raw asyncpg (except for the checkpointer).
+- Repositories accept a `sqlite3.Connection` parameter.
 
 ---
 
@@ -143,17 +129,20 @@ GET  /api/profile       -- Current user profile + phase
 GET  /api/goals         -- User's goals + milestones
 GET  /api/health        -- Health check
 GET  /api/conversation  -- Conversation history
+GET  /api/admin/patients -- All patients with stats (no auth)
+GET  /api/admin/alerts   -- Unacknowledged clinician alerts (no auth)
+POST /api/admin/reset    -- Re-seed database (no auth)
 ```
 
 ### Authentication
-- All endpoints except `/api/health` require a valid JWT in `Authorization: Bearer <token>`.
-- JWT is verified against Supabase Auth on every request.
+- All patient-facing endpoints require a valid token in `Authorization: Bearer <token>`.
+- Admin endpoints are unauthenticated (demo only).
 - 401 response for missing or invalid token.
 
 ### Streaming (SSE)
 - Use `sse-starlette` for SSE responses.
 - Stream via `graph.astream_events(input, config, version="v2")`.
-- Event types: `token`, `tool_start`, `tool_end`, `phase_change`, `done`, `error`.
+- Event types: `token`, `tool_start`, `tool_end`, `phase_change`, `safety_result`, `done`, `error`.
 - Send keepalive ping every 15 seconds to prevent Railway timeout.
 - Format: `data: {"type": "<event_type>", ...}\n\n`
 
@@ -201,11 +190,10 @@ GET  /api/conversation  -- Conversation history
 - Consent is verified on **EVERY interaction** (R16). Not cached, not assumed.
 - The `consent_gate` node checks `profiles.consent_given_at IS NOT NULL`.
 - If consent is not given, the response is a consent prompt. No subgraph is invoked.
-- Consent is separate from MedBridge's own consent.
 
 ### Data Classification
-- `safety_audit_log` and `clinician_alerts` are **service_role only**. Users cannot access these tables.
-- Patient conversation data is isolated via RLS. No cross-patient data access.
+- `safety_audit_log` and `clinician_alerts` are internal tables. Users should not access these directly.
+- Patient conversation data is isolated per user. No cross-patient data access in patient-facing endpoints.
 - Never log raw PHI to application logs. Use patient_id as the identifier in logs.
 
 ---
@@ -265,39 +253,9 @@ GET  /api/conversation  -- Conversation history
 | Demo | 5 |
 | **Total** | **142** |
 
-### Test Structure
-```
-tests/
-  conftest.py              # Shared fixtures, mock LLM, mock DB
-  test_models.py           # Pydantic model validation
-  test_config.py           # Configuration tests
-  test_db.py               # Repository tests
-  test_safety.py           # Safety classifier (both tiers)
-  test_tools.py            # Tool implementations + phase binding
-  test_state.py            # Graph state schema
-  test_consent.py          # Consent gate
-  test_routing.py          # Phase routing (deterministic)
-  test_onboarding.py       # Onboarding subgraph
-  test_active.py           # Active subgraph
-  test_summarize.py        # Summarization logic
-  test_re_engage.py        # Re-engagement subgraph
-  test_safety_node.py      # Safety node in graph context
-  test_api.py              # FastAPI endpoints
-  test_scheduling.py       # pg_cron / scheduling
-  test_journey.py          # Full patient journey E2E
-  test_edge_cases.py       # All 4 brief edge cases + extras
-  test_adversarial.py      # 100+ adversarial prompts
-  test_error_recovery.py   # Error handling
-  test_concurrent.py       # Concurrency
-  test_demo.py             # Demo readiness
-  adversarial_prompts.json # Adversarial prompt bank
-  safe_prompts.json        # Safe prompt bank for FP testing
-```
-
 ### Testing Patterns
 - Mock the LLM in unit tests: use `unittest.mock.patch` or `respx` to mock `ChatAnthropic` responses.
-- Mock the DB in unit tests: use in-memory dictionaries or fixtures.
-- Integration tests may use a real Supabase test project (separate from production).
+- Mock the DB in unit tests: use in-memory SQLite connections or fixtures.
 - Adversarial tests are parametrized: `@pytest.mark.parametrize("prompt", load_adversarial_prompts())`.
 - Safety tests MUST assert: FN rate < 1% (critical), FP rate < 10%.
 - Use `pytest-asyncio` for all async tests with `@pytest.mark.asyncio`.
@@ -330,7 +288,6 @@ tests/
 | Re-engage schedule | Day 2, 5, 7 | R8 |
 | Rate limit | 10 msg/min/user | Patch P3 |
 | SSE keepalive | 15 seconds | Patch P2 |
-| Polling interval (pg_cron) | 5 minutes | Patch P1 |
 | Milestone horizon | 4 weeks | CORE Innovation |
 | Min test count | 142 | PRD |
 
@@ -339,11 +296,7 @@ tests/
 ## Environment Variables
 
 ```bash
-# Required
-SUPABASE_URL=https://xxxxx.supabase.co          # Supabase project URL
-SUPABASE_ANON_KEY=eyJ...                         # Supabase anon/public key
-SUPABASE_SERVICE_ROLE_KEY=eyJ...                 # Supabase service role key (server-side only)
-SUPABASE_DB_URL=postgresql://...@db.xxxxx.supabase.co:5432/postgres  # Direct DB connection (NOT pooler port 6543)
+# Required (for real mode)
 ANTHROPIC_API_KEY=sk-ant-...                     # Anthropic API key for Claude Haiku 4.5
 
 # Optional (recommended)
@@ -352,6 +305,7 @@ LANGCHAIN_API_KEY=lsv2_...                       # LangSmith API key
 LANGCHAIN_PROJECT=ai-health-coach                # LangSmith project name
 
 # Configuration (with defaults)
+DATABASE_PATH=health_coach.db                    # SQLite database path (default: health_coach.db)
 SUMMARIZE_EVERY_N_TURNS=6                        # Summarize after N turns (default: 6)
 RE_ENGAGE_SCHEDULE=2,5,7                         # Days for re-engagement attempts (default: 2,5,7)
 MAX_RE_ENGAGE_ATTEMPTS=3                         # Max attempts before DORMANT (default: 3)
@@ -363,4 +317,12 @@ CORS_ORIGINS=http://localhost:3000               # Allowed CORS origins (comma-s
 ```
 
 **NEVER commit `.env` files. Use `.env.example` as a template.**
-**NEVER use the pooler connection (port 6543) for the checkpointer. Always use direct connection (port 5432).**
+
+---
+
+## Frontend
+
+- **Demo Mode**: Active when `NEXT_PUBLIC_API_URL` is not set. Uses hardcoded data from `web/lib/demo-data.ts`.
+- **Real Mode**: Set `NEXT_PUBLIC_API_URL=http://localhost:8000` to connect to the backend.
+- UI components use shadcn/ui built on @base-ui/react primitives.
+- Design system colors: emerald (primary), amber (warning/streak), blue (info/onboarding), red (destructive/alerts).

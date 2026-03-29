@@ -7,7 +7,7 @@ import { MessageInput } from "./message-input";
 import { PhaseBanner } from "./phase-banner";
 import { EmptyState } from "./empty-state";
 import { SuggestedPrompts } from "./suggested-prompts";
-import { Message, Phase, ToolCall, SSEEvent } from "@/lib/types";
+import { Message, Phase, ToolCall, SSEEvent, SafetyResult } from "@/lib/types";
 import { demoResponses, simulateStream } from "@/lib/demo-responses";
 import { streamChat } from "@/lib/api";
 
@@ -19,6 +19,8 @@ interface ChatContainerProps {
   phase?: Phase;
   onGoalsChanged?: () => void;
   onPhaseChanged?: () => void;
+  onSafetyResult?: (result: SafetyResult) => void;
+  onToolCall?: (toolCall: ToolCall) => void;
 }
 
 export function ChatContainer({
@@ -29,6 +31,8 @@ export function ChatContainer({
   phase = "ACTIVE",
   onGoalsChanged,
   onPhaseChanged,
+  onSafetyResult,
+  onToolCall,
 }: ChatContainerProps) {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -154,6 +158,27 @@ export function ChatContainer({
         )
       );
 
+      // Emit demo safety result
+      onSafetyResult?.({
+        classification: "safe",
+        confidence: 0.99,
+        categories: ["general_wellness"],
+        action: "passed",
+        reasoning: "Demo mode — auto pass",
+      });
+
+      // Emit demo tool calls
+      if (response.toolCalls) {
+        for (const tc of response.toolCalls) {
+          onToolCall?.({
+            tool: tc.tool,
+            args: tc.args ?? {},
+            result: tc.result,
+            status: "complete",
+          });
+        }
+      }
+
       // Phase change
       if (response.phaseChange) {
         await new Promise((resolve) => setTimeout(resolve, 500));
@@ -170,7 +195,7 @@ export function ChatContainer({
 
       setIsStreaming(false);
     },
-    [patientId, responseIndex]
+    [patientId, responseIndex, onSafetyResult, onToolCall]
   );
 
   // ── Real mode send handler (SSE streaming) ─────────────────────
@@ -260,6 +285,13 @@ export function ChatContainer({
                     return { ...m, tool_calls: toolCalls };
                   })
                 );
+                // Notify parent of tool call completion
+                onToolCall?.({
+                  tool: event.tool ?? "unknown",
+                  args: event.args ?? {},
+                  result: toolResult,
+                  status: "complete",
+                });
                 // Refetch goals after set_goal tool completes
                 if (event.tool === "set_goal") {
                   onGoalsChanged?.();
@@ -286,6 +318,20 @@ export function ChatContainer({
                     },
                   ]);
                   onPhaseChanged?.();
+                }
+                break;
+              }
+
+              case "safety_result": {
+                const sr = event.result as Record<string, unknown> | undefined;
+                if (sr) {
+                  onSafetyResult?.({
+                    classification: (sr.classification as string) ?? "unknown",
+                    confidence: (sr.confidence as number) ?? 0,
+                    categories: sr.categories as string[] | undefined,
+                    action: sr.action_taken as SafetyResult["action"],
+                    reasoning: sr.reasoning as string | undefined,
+                  });
                 }
                 break;
               }
@@ -349,7 +395,7 @@ export function ChatContainer({
         abortRef.current = null;
       }
     },
-    [phase, onGoalsChanged, onPhaseChanged]
+    [phase, onGoalsChanged, onPhaseChanged, onSafetyResult, onToolCall]
   );
 
   // ── Dispatch to correct handler ────────────────────────────────

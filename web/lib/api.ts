@@ -367,3 +367,25 @@ export function computeAdherence(goals: Goal[]): AdherenceStats {
     trend: "stable",
   };
 }
+
+// ─── Admin API functions ─────────────────────────────────────────
+
+import type { DashboardPatient, DashboardAlert } from "@/lib/types";
+
+export async function fetchAdminPatients(): Promise<DashboardPatient[]> {
+  const data = await apiFetch<{ patients: DashboardPatient[] }>(
+    "/api/admin/patients"
+  );
+  return data.patients;
+}
+
+export async function fetchAdminAlerts(): Promise<DashboardAlert[]> {
+  const data = await apiFetch<{ alerts: DashboardAlert[] }>(
+    "/api/admin/alerts"
+  );
+  return data.alerts;
+}
+
+export async function resetDemo(): Promise<{ status: string }> {
+  return apiFetch<{ status: string }>("/api/admin/reset", { method: "POST" });
+}

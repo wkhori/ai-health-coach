@@ -235,3 +235,95 @@ class TestRateLimiting:
             check_rate_limit("test-user-2", max_per_minute=10)
 
         assert exc_info.value.status_code == 429
+
+
+# --- Admin endpoint tests ---
+
+
+class TestAdminEndpoints:
+    """Tests for /api/admin/* endpoints."""
+
+    def test_admin_patients_returns_list(self):
+        """GET /api/admin/patients returns patient list."""
+        import sqlite3
+
+        from src.db.schema import init_db
+        from src.db.seed import seed_db
+
+        db = sqlite3.connect(":memory:", check_same_thread=False)
+        db.row_factory = sqlite3.Row
+        init_db(db)
+        seed_db(db)
+
+        with patch("src.db.client.get_db", return_value=db), patch(
+            "src.main.get_settings",
+            return_value=MagicMock(database_path=":memory:"),
+        ):
+            client = TestClient(app)
+            resp = client.get("/api/admin/patients")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "patients" in data
+        assert len(data["patients"]) == 3
+
+        # Check patient fields
+        patient = data["patients"][0]
+        assert "display_name" in patient
+        assert "phase" in patient
+        assert "active_goals_count" in patient
+        assert "adherence_pct" in patient
+        assert "alerts_count" in patient
+
+    def test_admin_alerts_returns_list(self):
+        """GET /api/admin/alerts returns alert list."""
+        import sqlite3
+
+        from src.db.schema import init_db
+        from src.db.seed import seed_db
+
+        db = sqlite3.connect(":memory:", check_same_thread=False)
+        db.row_factory = sqlite3.Row
+        init_db(db)
+        seed_db(db)
+
+        with patch("src.db.client.get_db", return_value=db), patch(
+            "src.main.get_settings",
+            return_value=MagicMock(database_path=":memory:"),
+        ):
+            client = TestClient(app)
+            resp = client.get("/api/admin/alerts")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "alerts" in data
+        assert len(data["alerts"]) >= 1
+
+        alert = data["alerts"][0]
+        assert "patient_name" in alert
+        assert "urgency" in alert
+        assert "message" in alert
+
+    def test_admin_reset_reseeds(self):
+        """POST /api/admin/reset re-seeds database."""
+        import sqlite3
+
+        from src.db.schema import init_db
+        from src.db.seed import seed_db
+
+        db = sqlite3.connect(":memory:", check_same_thread=False)
+        db.row_factory = sqlite3.Row
+        init_db(db)
+        seed_db(db)
+
+        with patch("src.db.client.get_db", return_value=db), patch(
+            "src.main.get_settings",
+            return_value=MagicMock(database_path=":memory:"),
+        ):
+            client = TestClient(app)
+            resp = client.post("/api/admin/reset")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "reset_complete"
+        assert data["patients_count"] == 3

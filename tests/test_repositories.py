@@ -1,11 +1,8 @@
 """Comprehensive integration tests for all 8 SQLite repository classes."""
 
 import sqlite3
-import time
 from datetime import datetime, timedelta
 from uuid import UUID, uuid4
-
-import pytest
 
 from src.db.repositories import (
     AlertRepository,
@@ -23,7 +20,6 @@ from src.models.enums import (
     SafetyAction,
     SafetyClassificationType,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -229,8 +225,8 @@ class TestGoalRepository:
         uid = _seed_user(db_conn)
         repo = GoalRepository(db_conn)
 
-        g1 = repo.create(UUID(uid), "Goal A")
-        g2 = repo.create(UUID(uid), "Goal B")
+        repo.create(UUID(uid), "Goal A")
+        repo.create(UUID(uid), "Goal B")
 
         goals = repo.get_by_user(UUID(uid))
 
@@ -250,7 +246,7 @@ class TestGoalRepository:
         uid = _seed_user(db_conn)
         repo = GoalRepository(db_conn)
 
-        g1 = repo.create(UUID(uid), "Active Goal")
+        repo.create(UUID(uid), "Active Goal")
         g2 = repo.create(UUID(uid), "Paused Goal")
 
         # Manually pause g2
@@ -267,7 +263,7 @@ class TestGoalRepository:
         repo = GoalRepository(db_conn)
 
         g1 = repo.create(UUID(uid), "Goal X")
-        g2 = repo.create(UUID(uid), "Goal Y")
+        repo.create(UUID(uid), "Goal Y")
 
         repo.confirm_goal(UUID(g1["id"]))
 
@@ -912,7 +908,7 @@ class TestAlertRepository:
         repo = AlertRepository(db_conn)
 
         a1 = repo.create(UUID(uid), "issue1", message="First")
-        a2 = repo.create(UUID(uid), "issue2", message="Second")
+        repo.create(UUID(uid), "issue2", message="Second")
 
         repo.acknowledge(UUID(a1["id"]), notes="Reviewed")
 
@@ -956,3 +952,80 @@ class TestAlertRepository:
         repo = AlertRepository(db_conn)
         unacked = repo.get_unacknowledged()
         assert unacked == []
+
+    def test_count_by_user(self, db_conn: sqlite3.Connection) -> None:
+        uid = self._uid(db_conn)
+        repo = AlertRepository(db_conn)
+
+        repo.create(UUID(uid), "issue1", message="First")
+        repo.create(UUID(uid), "issue2", message="Second")
+
+        assert repo.count_by_user(UUID(uid)) == 2
+
+    def test_count_by_user_excludes_acknowledged(self, db_conn: sqlite3.Connection) -> None:
+        uid = self._uid(db_conn)
+        repo = AlertRepository(db_conn)
+
+        a1 = repo.create(UUID(uid), "issue1", message="First")
+        repo.create(UUID(uid), "issue2", message="Second")
+        repo.acknowledge(UUID(a1["id"]))
+
+        assert repo.count_by_user(UUID(uid)) == 1
+
+    def test_count_by_user_empty(self, db_conn: sqlite3.Connection) -> None:
+        uid = self._uid(db_conn)
+        repo = AlertRepository(db_conn)
+        assert repo.count_by_user(UUID(uid)) == 0
+
+    def test_get_unacknowledged_with_patient_includes_name(self, db_conn: sqlite3.Connection) -> None:
+        uid = self._uid(db_conn)
+        # Need a profile for the JOIN
+        _seed_profile(db_conn, uid)
+        repo = AlertRepository(db_conn)
+
+        repo.create(UUID(uid), "concern", message="Check patient")
+
+        results = repo.get_unacknowledged_with_patient()
+        assert len(results) == 1
+        assert results[0]["patient_name"] is not None
+
+
+class TestProfileRepositoryGetAll:
+    """Tests for ProfileRepository.get_all()."""
+
+    def test_get_all_returns_all_profiles(self, db_conn: sqlite3.Connection) -> None:
+        from src.db.repositories import ProfileRepository
+
+        # Seed some profiles
+        db_conn.execute(
+            "INSERT INTO users (id, email, password_hash) VALUES (?, ?, ?)",
+            ("u1", "a@test.com", "hash"),
+        )
+        db_conn.execute(
+            "INSERT INTO users (id, email, password_hash) VALUES (?, ?, ?)",
+            ("u2", "b@test.com", "hash"),
+        )
+        db_conn.execute(
+            "INSERT INTO profiles (id, user_id, display_name) VALUES (?, ?, ?)",
+            ("p1", "u1", "Alice"),
+        )
+        db_conn.execute(
+            "INSERT INTO profiles (id, user_id, display_name) VALUES (?, ?, ?)",
+            ("p2", "u2", "Bob"),
+        )
+        db_conn.commit()
+
+        repo = ProfileRepository(db_conn)
+        profiles = repo.get_all()
+
+        assert len(profiles) == 2
+        # Sorted by display_name
+        assert profiles[0]["display_name"] == "Alice"
+        assert profiles[1]["display_name"] == "Bob"
+
+    def test_get_all_empty(self, db_conn: sqlite3.Connection) -> None:
+        from src.db.repositories import ProfileRepository
+
+        repo = ProfileRepository(db_conn)
+        profiles = repo.get_all()
+        assert profiles == []
