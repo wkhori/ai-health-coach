@@ -7,6 +7,7 @@ import { PatientSwitcher } from "@/components/patient-switcher";
 import { PatientSidebar } from "@/components/sidebar/patient-sidebar";
 import { ChatContainer } from "@/components/chat/chat-container";
 import { ConsentBanner } from "@/components/consent-banner";
+import { DemoControls } from "@/components/demo-controls";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -22,12 +23,13 @@ import {
   fetchGoals,
   fetchConversation,
   grantConsent,
+  resetDemo,
   apiGoalToGoal,
   apiTurnToMessage,
   computeAdherence,
   type ApiProfile,
 } from "@/lib/api";
-import type { Goal, Message, AdherenceStats, Phase } from "@/lib/types";
+import type { Goal, Message, AdherenceStats, Phase, SafetyResult, ToolCall } from "@/lib/types";
 import Link from "next/link";
 import { PanelLeft, Heart, LogOut, Loader2, LayoutDashboard } from "lucide-react";
 
@@ -51,6 +53,10 @@ export default function Home() {
   const [conversation, setConversation] = useState<Message[]>([]);
   const [dataLoading, setDataLoading] = useState(false);
   const [dataError, setDataError] = useState<string | null>(null);
+
+  // ── Demo controls state ────────────────────────────────────────
+  const [safetyResult, setSafetyResult] = useState<SafetyResult | null>(null);
+  const [recentToolCalls, setRecentToolCalls] = useState<ToolCall[]>([]);
 
   // ── Load real data when authenticated ──────────────────────────
   const loadData = useCallback(async () => {
@@ -288,9 +294,31 @@ export default function Home() {
             phase={displayPhase}
             onGoalsChanged={refetchGoals}
             onPhaseChanged={refetchProfile}
+            onSafetyResult={setSafetyResult}
+            onToolCall={(tc) =>
+              setRecentToolCalls((prev) => [...prev.slice(-9), tc])
+            }
           />
         </main>
       </div>
+
+      {/* Demo controls panel */}
+      <DemoControls
+        phase={displayPhase}
+        safetyResult={safetyResult}
+        toolCalls={recentToolCalls}
+        demoMode={DEMO_MODE}
+        onReset={async () => {
+          if (!DEMO_MODE) {
+            try {
+              await resetDemo();
+            } catch {
+              // Ignore reset errors
+            }
+          }
+          window.location.reload();
+        }}
+      />
     </div>
   );
 }
