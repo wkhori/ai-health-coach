@@ -40,6 +40,7 @@ export function ChatContainer({
   const bottomRef = useRef<HTMLDivElement>(null);
   const prevPatientId = useRef(patientId);
   const abortRef = useRef<AbortController | null>(null);
+  const hasSentMessage = useRef(false);
 
   // Reset when patient changes
   useEffect(() => {
@@ -48,12 +49,13 @@ export function ChatContainer({
       setIsStreaming(false);
       setResponseIndex(0);
       prevPatientId.current = patientId;
+      hasSentMessage.current = false;
     }
   }, [patientId, initialMessages]);
 
-  // Sync initial messages when they change from parent
+  // Sync initial messages when they change from parent (only before user sends)
   useEffect(() => {
-    if (!isStreaming) {
+    if (!isStreaming && !hasSentMessage.current) {
       setMessages(initialMessages);
     }
   }, [initialMessages, isStreaming]);
@@ -73,6 +75,7 @@ export function ChatContainer({
   // ── Demo mode send handler ─────────────────────────────────────
   const handleDemoSend = useCallback(
     async (text: string) => {
+      hasSentMessage.current = true;
       const userMessage: Message = {
         id: `msg-${Date.now()}`,
         role: "user",
@@ -201,6 +204,7 @@ export function ChatContainer({
   // ── Real mode send handler (SSE streaming) ─────────────────────
   const handleRealSend = useCallback(
     async (text: string) => {
+      hasSentMessage.current = true;
       const userMessage: Message = {
         id: `msg-${Date.now()}`,
         role: "user",

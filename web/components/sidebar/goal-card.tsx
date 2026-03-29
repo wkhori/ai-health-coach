@@ -149,7 +149,7 @@ export function GoalCard({ goal }: { goal: Goal }) {
             <ChevronRight className="size-3 shrink-0 text-muted-foreground" />
           )}
           <Target className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
-          <CardTitle className="flex-1 truncate text-sm">
+          <CardTitle className="flex-1 text-sm leading-snug">
             {goal.title}
           </CardTitle>
           <span
