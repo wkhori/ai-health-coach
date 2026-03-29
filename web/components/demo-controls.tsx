@@ -75,7 +75,7 @@ export function DemoControls({
         type="button"
         onClick={() => setOpen(!open)}
         className={cn(
-          "fixed right-0 top-1/2 z-50 -translate-y-1/2 rounded-l-lg border border-r-0 bg-background/95 px-1 py-3 shadow-md backdrop-blur transition-all hover:bg-accent",
+          "fixed right-0 top-1/2 z-50 -translate-y-1/2 rounded-l-lg border border-r-0 bg-background/95 px-1 py-3 shadow-md backdrop-blur transition-all hover:bg-accent hidden sm:block",
           open && "right-72"
         )}
         title={open ? "Close demo controls" : "Open demo controls"}
@@ -90,7 +90,7 @@ export function DemoControls({
       {/* Panel */}
       <div
         className={cn(
-          "fixed right-0 top-13 bottom-0 z-40 w-72 border-l bg-background/95 backdrop-blur transition-transform duration-200 ease-in-out",
+          "fixed right-0 top-13 bottom-0 z-40 w-72 border-l bg-background/95 backdrop-blur transition-transform duration-200 ease-in-out hidden sm:block",
           open ? "translate-x-0" : "translate-x-full"
         )}
       >

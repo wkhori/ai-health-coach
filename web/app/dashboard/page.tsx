@@ -285,6 +285,16 @@ export default function Dashboard() {
                         </tr>
                       </thead>
                       <tbody>
+                        {patients.length === 0 && (
+                          <tr>
+                            <td
+                              colSpan={6}
+                              className="px-4 py-8 text-center text-sm text-muted-foreground"
+                            >
+                              No patients found
+                            </td>
+                          </tr>
+                        )}
                         {patients.map((patient) => (
                           <tr
                             key={patient.user_id}

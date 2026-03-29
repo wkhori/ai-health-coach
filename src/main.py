@@ -482,6 +482,7 @@ async def chat_stream(
     config = {"configurable": {"thread_id": user_id}}
 
     async def event_generator():
+        safety_emitted = False
         try:
             async for event in graph.astream_events(graph_input, config, version="v2"):
                 kind = event.get("event", "")
@@ -532,10 +533,12 @@ async def chat_stream(
                             }
                         sr = output.get("safety_result")
                         if (
-                            isinstance(sr, dict)
+                            not safety_emitted
+                            and isinstance(sr, dict)
                             and sr.get("classification")
-                            and sr["classification"] != "No assistant message to check"
+                            and sr.get("reasoning") != "No assistant message to check."
                         ):
+                            safety_emitted = True
                             yield {
                                 "event": "message",
                                 "data": json.dumps({

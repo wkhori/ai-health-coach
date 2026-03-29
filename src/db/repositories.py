@@ -479,7 +479,7 @@ class AlertRepository:
         rows = self.conn.execute(
             """SELECT ca.*, p.display_name as patient_name
                FROM clinician_alerts ca
-               JOIN profiles p ON ca.user_id = p.user_id
+               LEFT JOIN profiles p ON ca.user_id = p.user_id
                WHERE ca.status = 'pending'
                ORDER BY ca.created_at DESC"""
         ).fetchall()
