@@ -426,7 +426,7 @@ export function ChatContainer({
 
   return (
     <div className="flex h-full flex-col">
-      <ScrollArea className="flex-1 overflow-auto">
+      <ScrollArea className="flex-1 overflow-hidden">
         <div className="mx-auto max-w-2xl space-y-4 px-4 py-6">
           {messages.length === 0 ? (
             <EmptyState
