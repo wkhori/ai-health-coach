@@ -142,12 +142,19 @@ export default function Dashboard() {
             </Badge>
           )}
         </div>
-        <Link href="/">
-          <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground">
-            <ArrowLeft className="size-3.5" />
-            <span className="hidden sm:inline">Back to Chat</span>
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link href="/about">
+            <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground">
+              <span className="hidden sm:inline">How It Was Built</span>
+            </Button>
+          </Link>
+          <Link href="/">
+            <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground">
+              <ArrowLeft className="size-3.5" />
+              <span className="hidden sm:inline">Back to Chat</span>
+            </Button>
+          </Link>
+        </div>
       </header>
 
       {/* Content */}

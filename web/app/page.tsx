@@ -31,7 +31,7 @@ import {
 } from "@/lib/api";
 import type { Goal, Message, AdherenceStats, Phase, SafetyResult, ToolCall } from "@/lib/types";
 import Link from "next/link";
-import { PanelLeft, Heart, LogOut, Loader2, LayoutDashboard } from "lucide-react";
+import { PanelLeft, Heart, LogOut, Loader2, LayoutDashboard, Info } from "lucide-react";
 
 export default function Home() {
   // ── Demo mode state ────────────────────────────────────────────
@@ -240,6 +240,17 @@ export default function Home() {
         </div>
 
         <div className="flex items-center gap-2">
+          <Link href="/about" aria-label="How It Was Built">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="text-muted-foreground"
+              title="How It Was Built"
+              aria-label="How It Was Built"
+            >
+              <Info className="size-4" />
+            </Button>
+          </Link>
           <Link href="/dashboard" aria-label="Clinician Dashboard">
             <Button
               variant="ghost"
