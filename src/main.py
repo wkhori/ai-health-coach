@@ -490,10 +490,18 @@ async def chat_stream(
                 if kind == "on_chat_model_stream":
                     chunk = event.get("data", {}).get("chunk", None)
                     if chunk and hasattr(chunk, "content") and chunk.content:
-                        yield {
-                            "event": "message",
-                            "data": json.dumps({"type": "token", "content": chunk.content}),
-                        }
+                        content = chunk.content
+                        # Handle content block lists from newer Anthropic SDK
+                        if isinstance(content, list):
+                            content = "".join(
+                                block.get("text", "") if isinstance(block, dict) else str(block)
+                                for block in content
+                            )
+                        if content:
+                            yield {
+                                "event": "message",
+                                "data": json.dumps({"type": "token", "content": content}),
+                            }
 
                 elif kind == "on_tool_start":
                     tool_name = event.get("name", "")

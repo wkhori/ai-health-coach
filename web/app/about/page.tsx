@@ -2,33 +2,28 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { AppPreviewPlayer } from "@/components/app-preview-player";
 import {
   Heart,
   ArrowLeft,
   Brain,
   Shield,
   GitBranch,
-  Database,
-  Zap,
-  TestTube,
-  Code2,
-  MessageSquare,
-  Target,
-  Clock,
   AlertTriangle,
-  Layers,
   Workflow,
   Lock,
   BarChart3,
   Bot,
-  Gauge,
-  Network,
-  Play,
+  MessageSquare,
   Wrench,
+  TestTube,
+  Monitor,
+  Zap,
+  Database,
+  Activity,
 } from "lucide-react";
 
 // ── Animation variants ──────────────────────────────────────────────
@@ -44,127 +39,52 @@ const stagger = {
 };
 
 // ── Data ─────────────────────────────────────────────────────────────
-const METRICS = [
-  { label: "Lines of Code", value: "5,000+", icon: Code2, color: "bg-blue-100 dark:bg-blue-950 text-blue-600 dark:text-blue-400" },
-  { label: "Tests Passing", value: "701", icon: TestTube, color: "bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400" },
-  { label: "Adversarial Prompts", value: "113", icon: Shield, color: "bg-red-100 dark:bg-red-950 text-red-600 dark:text-red-400" },
-  { label: "Safety Rules", value: "24", icon: Lock, color: "bg-amber-100 dark:bg-amber-950 text-amber-600 dark:text-amber-400" },
-  { label: "AI Tools", value: "5", icon: Wrench, color: "bg-violet-100 dark:bg-violet-950 text-violet-600 dark:text-violet-400" },
-  { label: "API Endpoints", value: "14", icon: Network, color: "bg-cyan-100 dark:bg-cyan-950 text-cyan-600 dark:text-cyan-400" },
-  { label: "Database Tables", value: "10", icon: Database, color: "bg-orange-100 dark:bg-orange-950 text-orange-600 dark:text-orange-400" },
-  { label: "Graph Nodes", value: "17", icon: Workflow, color: "bg-pink-100 dark:bg-pink-950 text-pink-600 dark:text-pink-400" },
-];
-
-const TECH_STACK = [
-  { name: "Python 3.12+", role: "Backend Language", icon: Code2, color: "bg-blue-100 dark:bg-blue-950 text-blue-600" },
-  { name: "LangGraph", role: "Agent Framework", icon: Workflow, color: "bg-emerald-100 dark:bg-emerald-950 text-emerald-600" },
-  { name: "Claude Haiku 4.5", role: "LLM", icon: Brain, color: "bg-violet-100 dark:bg-violet-950 text-violet-600" },
-  { name: "FastAPI", role: "API Server", icon: Zap, color: "bg-amber-100 dark:bg-amber-950 text-amber-600" },
-  { name: "Next.js 16", role: "Frontend Framework", icon: Layers, color: "bg-zinc-100 dark:bg-zinc-900 text-zinc-600" },
-  { name: "SQLite", role: "Database", icon: Database, color: "bg-cyan-100 dark:bg-cyan-950 text-cyan-600" },
-  { name: "SSE Streaming", role: "Real-time Chat", icon: MessageSquare, color: "bg-pink-100 dark:bg-pink-950 text-pink-600" },
-  { name: "pytest", role: "Testing (701 tests)", icon: TestTube, color: "bg-red-100 dark:bg-red-950 text-red-600" },
-];
-
-const INNOVATIONS = [
+const DESIGN_DECISIONS = [
   {
     title: "Two-Tier Safety Classifier",
-    description: "Every outbound message passes through a regex pre-filter (Tier 1) and an LLM classifier (Tier 2). Crisis signals trigger hard-coded safe responses with the 988 Lifeline — the LLM never generates crisis text.",
+    decision: "Rules + LLM over LLM-only",
+    rationale:
+      "Tier 1 regex catches obvious cases in <1ms — fast-pass for safe content, fast-block for crisis keywords. Tier 2 LLM handles ambiguity. This cuts classifier LLM calls by ~70% while keeping false-negative rate under 1%.",
     icon: Shield,
     color: "bg-red-100 dark:bg-red-950 text-red-600 dark:text-red-400",
   },
   {
     title: "Deterministic Phase Routing",
-    description: "The 5-phase state machine (PENDING → ONBOARDING → ACTIVE → RE_ENGAGING → DORMANT) is 100% application code. Phase transitions are never LLM-decided, ensuring predictable patient journeys.",
+    decision: "Application code over LLM-decided routing",
+    rationale:
+      "The 5-phase state machine (PENDING → ONBOARDING → ACTIVE → RE_ENGAGING → DORMANT) is pure application code. Phase transitions are never LLM-decided — healthcare requires predictable patient journeys, not probabilistic routing.",
     icon: GitBranch,
-    color: "bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400",
+    color:
+      "bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400",
   },
   {
-    title: "Autonomous Tool Calling",
-    description: "The LLM independently decides when to call tools like set_goal, get_adherence_summary, and alert_clinician. Tools are bound per-phase — onboarding patients can only set goals, not check adherence.",
+    title: "Phase-Bound Tool Access",
+    decision: "Per-phase tool binding over global access",
+    rationale:
+      "The LLM gets different tools depending on the patient's phase. Onboarding patients can only set goals. Active patients get adherence tracking and clinician alerts. This prevents the model from calling tools that don't match the patient's stage.",
     icon: Bot,
-    color: "bg-violet-100 dark:bg-violet-950 text-violet-600 dark:text-violet-400",
+    color:
+      "bg-violet-100 dark:bg-violet-950 text-violet-600 dark:text-violet-400",
+  },
+  {
+    title: "Hard-Coded Crisis Responses",
+    decision: "Static verified strings over LLM-generated",
+    rationale:
+      "Crisis responses include specific hotline numbers (988 Lifeline, Crisis Text Line). LLM hallucination risk is unacceptable for these — they're verified, static strings that bypass the model entirely and auto-alert the care team.",
+    icon: AlertTriangle,
+    color:
+      "bg-orange-100 dark:bg-orange-950 text-orange-600 dark:text-orange-400",
   },
   {
     title: "Consent-Gated Interactions",
-    description: "Every single interaction verifies consent before any coaching occurs. Not cached, not assumed. The consent gate runs on every request as a graph node before any subgraph is invoked.",
+    decision: "Verify every request over session-cached consent",
+    rationale:
+      "Every interaction checks consent before any coaching occurs — not cached, not assumed. The consent gate is a graph node that runs before any subgraph is invoked, so no coaching leaks through on any code path.",
     icon: Lock,
-    color: "bg-amber-100 dark:bg-amber-950 text-amber-600 dark:text-amber-400",
-  },
-  {
-    title: "Clinician Dashboard & Alerts",
-    description: "Real-time multi-patient triage view with phase distribution, adherence tracking, and safety alerts. Crisis detection auto-generates urgent clinician alerts visible in the dashboard.",
-    icon: BarChart3,
-    color: "bg-blue-100 dark:bg-blue-950 text-blue-600 dark:text-blue-400",
-  },
-  {
-    title: "113 Adversarial Prompt Tests",
-    description: "Systematic adversarial testing covering prompt injection, clinical boundary violations, crisis scenarios, and edge cases. Safety false-negative rate target: <1%.",
-    icon: AlertTriangle,
-    color: "bg-orange-100 dark:bg-orange-950 text-orange-600 dark:text-orange-400",
+    color:
+      "bg-amber-100 dark:bg-amber-950 text-amber-600 dark:text-amber-400",
   },
 ];
-
-const CONSTRAINTS = [
-  { label: "Safety FN Rate", value: "< 1%", description: "Critical safety signals are never missed" },
-  { label: "Safety FP Rate", value: "< 10%", description: "Minimizes unnecessary content blocking" },
-  { label: "Rate Limit", value: "10 msg/min", description: "Per-user sliding window protection" },
-  { label: "Re-engage Backoff", value: "Day 2, 5, 7", description: "Exponential backoff before dormancy" },
-  { label: "Context Window", value: "~1,800 tokens", description: "Summarize every 6 turns to stay lean" },
-  { label: "Max Attempts", value: "3", description: "Re-engagement attempts before DORMANT" },
-];
-
-const ADRS = [
-  {
-    decision: "Agent Framework",
-    choice: "LangGraph over raw LangChain",
-    rationale: "LangGraph provides first-class support for stateful, multi-step agent workflows with checkpointing, conditional routing, and subgraph composition — essential for a phase-based coaching system.",
-  },
-  {
-    decision: "Safety Architecture",
-    choice: "Two-tier (Rules + LLM) over LLM-only",
-    rationale: "Tier 1 regex catches obvious cases in <1ms. Tier 2 LLM handles ambiguity. This cuts LLM calls by ~70% while maintaining <1% false negative rate on critical safety signals.",
-  },
-  {
-    decision: "Phase Routing",
-    choice: "Deterministic code over LLM-decided",
-    rationale: "Healthcare requires predictable behavior. LLM-decided routing would introduce non-determinism in patient care pathways. Application code reads state and returns a node name — no AI involved.",
-  },
-  {
-    decision: "Streaming Protocol",
-    choice: "SSE over WebSocket",
-    rationale: "SSE is simpler, works through proxies/CDNs, auto-reconnects, and is sufficient for server→client token streaming. WebSocket bidirectionality isn't needed for chat.",
-  },
-  {
-    decision: "Crisis Responses",
-    choice: "Hard-coded over LLM-generated",
-    rationale: "Crisis responses include specific hotline numbers (988 Lifeline, Crisis Text Line). LLM hallucination risk is unacceptable here — these are static, verified strings.",
-  },
-];
-
-const GRAPH_NODES = [
-  { name: "load_context", type: "setup" },
-  { name: "consent_gate", type: "gate" },
-  { name: "phase_router", type: "router" },
-  { name: "onboarding_subgraph", type: "subgraph" },
-  { name: "active_subgraph", type: "subgraph" },
-  { name: "re_engaging_subgraph", type: "subgraph" },
-  { name: "safety_classifier", type: "safety" },
-  { name: "output_final", type: "output" },
-  { name: "rewrite_message", type: "output" },
-  { name: "block_and_alert", type: "output" },
-  { name: "log_and_respond", type: "output" },
-  { name: "check_phase_transition", type: "gate" },
-];
-
-const NODE_COLORS: Record<string, string> = {
-  setup: "bg-blue-500",
-  gate: "bg-amber-500",
-  router: "bg-violet-500",
-  subgraph: "bg-emerald-500",
-  safety: "bg-red-500",
-  output: "bg-zinc-400 dark:bg-zinc-600",
-};
 
 // ── Component ────────────────────────────────────────────────────────
 export default function AboutPage() {
@@ -178,12 +98,16 @@ export default function AboutPage() {
               <Heart className="size-3.5 text-emerald-600 dark:text-emerald-400" />
             </div>
             <h1 className="text-sm font-semibold tracking-tight">
-              How It Was Built
+              How It Works
             </h1>
           </div>
         </div>
         <Link href="/">
-          <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-1.5 text-muted-foreground"
+          >
             <ArrowLeft className="size-3.5" />
             Back to App
           </Button>
@@ -214,11 +138,14 @@ export default function AboutPage() {
               variants={fadeInUp}
               className="mx-auto mt-3 max-w-2xl text-lg text-muted-foreground"
             >
-              An AI-powered accountability partner that helps patients stick to their
-              home exercise programs through goal-setting, safety-first coaching,
-              and intelligent re-engagement.
+              A safety-first AI coaching platform built with a 17-node
+              LangGraph agent, two-tier safety classification, and 701 tests
+              including 113 adversarial prompts.
             </motion.p>
-            <motion.div variants={fadeInUp} className="mt-6 flex items-center justify-center gap-3">
+            <motion.div
+              variants={fadeInUp}
+              className="mt-6 flex items-center justify-center gap-3"
+            >
               <Link href="/">
                 <Button className="gap-2 bg-emerald-600 text-white hover:bg-emerald-700">
                   <MessageSquare className="size-4" />
@@ -234,7 +161,7 @@ export default function AboutPage() {
             </motion.div>
           </motion.section>
 
-          {/* ── Demo Video Placeholder ────────────────── */}
+          {/* ── Feature Preview ────────────────────────── */}
           <motion.section
             initial="hidden"
             whileInView="visible"
@@ -242,49 +169,217 @@ export default function AboutPage() {
             variants={stagger}
           >
             <motion.div variants={fadeInUp}>
-              <Card className="overflow-hidden">
-                <div className="flex aspect-video items-center justify-center bg-muted/50">
-                  <div className="text-center">
-                    <div className="mx-auto mb-3 flex size-16 items-center justify-center rounded-full bg-muted">
-                      <Play className="size-8 text-muted-foreground" />
-                    </div>
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Demo Video
-                    </p>
-                    <p className="mt-1 text-xs text-muted-foreground/60">
-                      5-minute walkthrough coming soon
-                    </p>
-                  </div>
-                </div>
-              </Card>
+              <AppPreviewPlayer />
             </motion.div>
           </motion.section>
 
-          {/* ── What It Does ──────────────────────────── */}
+          {/* ── Problem & Approach ────────────────────── */}
           <motion.section
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: "-100px" }}
             variants={stagger}
           >
-            <motion.h2 variants={fadeInUp} className="text-2xl font-bold tracking-tight">
-              The Problem
+            <motion.h2
+              variants={fadeInUp}
+              className="text-2xl font-bold tracking-tight"
+            >
+              Problem & Approach
             </motion.h2>
-            <motion.div variants={fadeInUp} className="mt-4 space-y-4 text-muted-foreground">
+            <motion.div
+              variants={fadeInUp}
+              className="mt-4 space-y-4 text-muted-foreground"
+            >
               <p>
-                Healthcare providers prescribe home exercise programs (HEPs) to patients,
-                but <strong className="text-foreground">adherence is notoriously low</strong>.
-                Patients fall off their programs when they don&apos;t feel supported between visits.
-                Clinicians are already stretched thin and don&apos;t have bandwidth for regular
-                motivational check-ins with every patient.
+                Patients prescribed home exercise programs frequently fall off
+                their routines between clinic visits.{" "}
+                <strong className="text-foreground">
+                  Clinicians don&apos;t have bandwidth for regular motivational
+                  check-ins
+                </strong>{" "}
+                with every patient.
               </p>
               <p>
-                This project builds an <strong className="text-foreground">AI-powered accountability partner</strong> that
-                proactively engages patients through onboarding, goal-setting, and follow-up —
-                without crossing into clinical advice. Every response passes through a two-tier
-                safety classifier. Clinical content triggers automatic redirects to the care team.
-                Crisis signals trigger hard-coded safe responses with hotline numbers.
+                I built an AI coaching agent that fills this gap — onboarding
+                patients into exercise goals, tracking adherence, and
+                proactively re-engaging when they go quiet. The core constraint:{" "}
+                <strong className="text-foreground">
+                  stay within general wellness boundaries and never cross into
+                  clinical advice
+                </strong>
+                . Every outbound message passes through a safety classifier
+                before reaching the patient, and crisis signals trigger
+                hard-coded responses with verified hotline numbers.
               </p>
+            </motion.div>
+          </motion.section>
+
+          {/* ── System Architecture ──────────────────── */}
+          <motion.section
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-100px" }}
+            variants={stagger}
+          >
+            <motion.div variants={fadeInUp}>
+              <p className="text-xs font-semibold uppercase tracking-[0.15em] text-emerald-600 dark:text-emerald-400">
+                Architecture
+              </p>
+            </motion.div>
+            <motion.h2
+              variants={fadeInUp}
+              className="mt-1.5 text-2xl font-bold tracking-tight"
+            >
+              System Design
+            </motion.h2>
+            <motion.p
+              variants={fadeInUp}
+              className="mt-2 text-sm text-muted-foreground"
+            >
+              Three-tier architecture: Next.js frontend connected via SSE to a
+              FastAPI server, powered by a LangGraph agent pipeline with
+              two-tier safety classification.
+            </motion.p>
+            <motion.div variants={fadeInUp} className="mt-8">
+              <Card className="p-6 sm:p-10">
+                {/* ── Client tier ── */}
+                <div className="flex justify-center">
+                  <div className="inline-flex items-center gap-2.5 rounded-xl border bg-card px-5 py-2.5 shadow-sm">
+                    <Monitor className="size-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm font-medium">Web</p>
+                      <p className="text-[11px] text-muted-foreground/70">
+                        Next.js
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ── Connector ── */}
+                <div className="flex flex-col items-center py-1">
+                  <div className="h-5 w-px bg-border" />
+                  <span className="my-1 text-[11px] text-muted-foreground/60">
+                    SSE Streaming
+                  </span>
+                  <div className="h-5 w-px bg-border" />
+                </div>
+
+                {/* ── API tier ── */}
+                <div className="flex justify-center">
+                  <div className="inline-flex items-center gap-2.5 rounded-xl border bg-card px-5 py-2.5 shadow-sm">
+                    <Zap className="size-4 text-amber-500" />
+                    <div>
+                      <p className="text-sm font-medium">FastAPI</p>
+                      <p className="text-[11px] text-muted-foreground/70">
+                        API Server
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ── Connector ── */}
+                <div className="flex justify-center py-1">
+                  <div className="h-6 w-px bg-border" />
+                </div>
+
+                {/* ── LangGraph Pipeline ── */}
+                <div className="rounded-xl border bg-muted/40 p-5 sm:p-6">
+                  <p className="text-center text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+                    LangGraph Agent Pipeline
+                  </p>
+
+                  {/* Top flow: consent → router */}
+                  <div className="mt-5 flex items-center justify-center gap-2">
+                    <span className="rounded-lg border bg-card px-3 py-1.5 font-mono text-xs font-medium shadow-sm">
+                      consent_gate
+                    </span>
+                    <span className="text-xs text-muted-foreground/40">
+                      &rarr;
+                    </span>
+                    <span className="rounded-lg border bg-card px-3 py-1.5 font-mono text-xs font-medium shadow-sm">
+                      phase_router
+                    </span>
+                  </div>
+
+                  {/* Connector */}
+                  <div className="flex justify-center py-2">
+                    <div className="h-4 w-px bg-border" />
+                  </div>
+
+                  {/* Subgraphs */}
+                  <div className="flex flex-wrap justify-center gap-2">
+                    {["Onboarding", "Active", "Re-engaging"].map((phase) => (
+                      <span
+                        key={phase}
+                        className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-400"
+                      >
+                        {phase}
+                      </span>
+                    ))}
+                  </div>
+
+                  {/* Connector */}
+                  <div className="flex justify-center py-2">
+                    <div className="h-4 w-px bg-border" />
+                  </div>
+
+                  {/* Safety → output */}
+                  <div className="flex items-center justify-center gap-2">
+                    <span className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 font-mono text-xs font-medium text-red-700 shadow-sm dark:border-red-900 dark:bg-red-950 dark:text-red-400">
+                      safety_classifier
+                    </span>
+                    <span className="text-xs text-muted-foreground/40">
+                      &rarr;
+                    </span>
+                    <span className="rounded-lg border bg-card px-3 py-1.5 font-mono text-xs font-medium shadow-sm">
+                      output
+                    </span>
+                  </div>
+                </div>
+
+                {/* ── Bottom: tools + infrastructure ── */}
+                <div className="mt-6 flex flex-col items-center justify-between gap-4 sm:flex-row sm:items-start">
+                  <div>
+                    <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+                      Tools
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {[
+                        "set_goal",
+                        "set_reminder",
+                        "get_adherence",
+                        "alert_clinician",
+                      ].map((tool) => (
+                        <span
+                          key={tool}
+                          className="rounded-md border bg-card px-2 py-1 font-mono text-[11px] text-muted-foreground"
+                        >
+                          {tool}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+                      Infrastructure
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <span className="inline-flex items-center gap-1.5 rounded-full border bg-card px-3 py-1 text-xs font-medium shadow-sm">
+                        <Database className="size-3 text-cyan-500" />
+                        SQLite
+                      </span>
+                      <span className="inline-flex items-center gap-1.5 rounded-full border bg-card px-3 py-1 text-xs font-medium shadow-sm">
+                        <Brain className="size-3 text-violet-500" />
+                        Claude Haiku
+                      </span>
+                      <span className="inline-flex items-center gap-1.5 rounded-full border bg-card px-3 py-1 text-xs font-medium shadow-sm">
+                        <Activity className="size-3 text-emerald-500" />
+                        LangSmith
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </Card>
             </motion.div>
           </motion.section>
 
@@ -295,10 +390,16 @@ export default function AboutPage() {
             viewport={{ once: true, margin: "-100px" }}
             variants={stagger}
           >
-            <motion.h2 variants={fadeInUp} className="text-2xl font-bold tracking-tight">
+            <motion.h2
+              variants={fadeInUp}
+              className="text-2xl font-bold tracking-tight"
+            >
               AI Integration
             </motion.h2>
-            <motion.div variants={fadeInUp} className="mt-4 grid gap-4 sm:grid-cols-3">
+            <motion.div
+              variants={fadeInUp}
+              className="mt-4 grid gap-4 sm:grid-cols-3"
+            >
               <Card>
                 <CardHeader className="pb-2">
                   <div className="flex size-10 items-center justify-center rounded-lg bg-violet-100 dark:bg-violet-950">
@@ -308,8 +409,9 @@ export default function AboutPage() {
                 <CardContent>
                   <CardTitle className="text-sm">Claude Haiku 4.5</CardTitle>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Conversation generation and safety classification via langchain_anthropic.
-                    Temperature 0.7 for coaching, 0.0 for safety.
+                    Conversation generation (temp 0.7) and safety classification
+                    (temp 0.0) via langchain_anthropic. Streaming responses over
+                    SSE.
                   </p>
                 </CardContent>
               </Card>
@@ -322,8 +424,8 @@ export default function AboutPage() {
                 <CardContent>
                   <CardTitle className="text-sm">LangGraph Agent</CardTitle>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    17-node stateful graph with 3 phase subgraphs, conditional routing,
-                    and checkpointed conversation state.
+                    17-node stateful graph with 3 phase subgraphs, deterministic
+                    conditional routing, and checkpointed conversation state.
                   </p>
                 </CardContent>
               </Card>
@@ -336,204 +438,54 @@ export default function AboutPage() {
                 <CardContent>
                   <CardTitle className="text-sm">5 Autonomous Tools</CardTitle>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    set_goal, set_reminder, get_program_summary, get_adherence_summary,
-                    alert_clinician — the LLM decides when to call them.
+                    set_goal, set_reminder, get_program_summary,
+                    get_adherence_summary, alert_clinician — bound per-phase so
+                    the LLM only accesses what&apos;s appropriate.
                   </p>
                 </CardContent>
               </Card>
             </motion.div>
           </motion.section>
 
-          {/* ── Architecture Diagram ──────────────────── */}
+          {/* ── Design Decisions ──────────────────────── */}
           <motion.section
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: "-100px" }}
             variants={stagger}
           >
-            <motion.h2 variants={fadeInUp} className="text-2xl font-bold tracking-tight">
-              System Architecture
+            <motion.h2
+              variants={fadeInUp}
+              className="text-2xl font-bold tracking-tight"
+            >
+              Design Decisions
             </motion.h2>
-            <motion.p variants={fadeInUp} className="mt-2 text-sm text-muted-foreground">
-              The LangGraph main graph processes every patient interaction through this pipeline.
+            <motion.p
+              variants={fadeInUp}
+              className="mt-2 text-sm text-muted-foreground"
+            >
+              The decisions that shaped the architecture — each one is a
+              trade-off I evaluated.
             </motion.p>
-            <motion.div variants={fadeInUp} className="mt-6">
-              <Card className="overflow-x-auto p-6">
-                <div className="flex flex-wrap items-center gap-2 text-xs font-medium">
-                  {GRAPH_NODES.map((node, i) => (
-                    <div key={node.name} className="flex items-center gap-2">
-                      <div className="flex items-center gap-1.5 rounded-lg border bg-card px-3 py-2 shadow-sm">
-                        <span className={`size-2 rounded-full ${NODE_COLORS[node.type]}`} />
-                        <span className="font-mono">{node.name}</span>
-                      </div>
-                      {i < GRAPH_NODES.length - 1 && (
-                        <span className="text-muted-foreground/40">→</span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-4 flex flex-wrap gap-4 text-[10px] text-muted-foreground">
-                  {Object.entries(NODE_COLORS).map(([type, color]) => (
-                    <div key={type} className="flex items-center gap-1.5">
-                      <span className={`size-2 rounded-full ${color}`} />
-                      <span className="capitalize">{type}</span>
-                    </div>
-                  ))}
-                </div>
-              </Card>
-            </motion.div>
-          </motion.section>
-
-          {/* ── By the Numbers ────────────────────────── */}
-          <motion.section
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-100px" }}
-            variants={stagger}
-          >
-            <motion.h2 variants={fadeInUp} className="text-2xl font-bold tracking-tight">
-              By the Numbers
-            </motion.h2>
-            <motion.div
-              variants={stagger}
-              className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4"
-            >
-              {METRICS.map((m) => (
-                <motion.div key={m.label} variants={fadeInUp}>
-                  <Card className="text-center">
-                    <CardContent className="pt-5">
-                      <div className={`mx-auto mb-3 flex size-10 items-center justify-center rounded-lg ${m.color}`}>
-                        <m.icon className="size-5" />
-                      </div>
-                      <p className="text-2xl font-bold tracking-tight">{m.value}</p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">{m.label}</p>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
-            </motion.div>
-          </motion.section>
-
-          {/* ── Tech Stack ────────────────────────────── */}
-          <motion.section
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-100px" }}
-            variants={stagger}
-          >
-            <motion.h2 variants={fadeInUp} className="text-2xl font-bold tracking-tight">
-              Tech Stack
-            </motion.h2>
-            <motion.div
-              variants={stagger}
-              className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4"
-            >
-              {TECH_STACK.map((t) => (
-                <motion.div key={t.name} variants={fadeInUp}>
-                  <Card>
-                    <CardContent className="flex items-center gap-3 pt-5">
-                      <div className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${t.color}`}>
-                        <t.icon className="size-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium">{t.name}</p>
-                        <p className="truncate text-xs text-muted-foreground">{t.role}</p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
-            </motion.div>
-          </motion.section>
-
-          {/* ── Innovation Highlights ─────────────────── */}
-          <motion.section
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-100px" }}
-            variants={stagger}
-          >
-            <motion.h2 variants={fadeInUp} className="text-2xl font-bold tracking-tight">
-              Innovation Highlights
-            </motion.h2>
-            <motion.div
-              variants={stagger}
-              className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
-            >
-              {INNOVATIONS.map((item) => (
+            <motion.div variants={stagger} className="mt-6 space-y-3">
+              {DESIGN_DECISIONS.map((item) => (
                 <motion.div key={item.title} variants={fadeInUp}>
-                  <Card className="h-full">
-                    <CardHeader className="pb-2">
-                      <div className={`flex size-10 items-center justify-center rounded-lg ${item.color}`}>
+                  <Card>
+                    <CardContent className="flex items-start gap-4 pt-5">
+                      <div
+                        className={`flex size-10 shrink-0 items-center justify-center rounded-lg ${item.color}`}
+                      >
                         <item.icon className="size-5" />
                       </div>
-                    </CardHeader>
-                    <CardContent>
-                      <CardTitle className="text-sm">{item.title}</CardTitle>
-                      <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                        {item.description}
-                      </p>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
-            </motion.div>
-          </motion.section>
-
-          {/* ── Operating Constraints ─────────────────── */}
-          <motion.section
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-100px" }}
-            variants={stagger}
-          >
-            <motion.h2 variants={fadeInUp} className="text-2xl font-bold tracking-tight">
-              Operating Constraints
-            </motion.h2>
-            <motion.div
-              variants={stagger}
-              className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3"
-            >
-              {CONSTRAINTS.map((c) => (
-                <motion.div key={c.label} variants={fadeInUp}>
-                  <Card>
-                    <CardContent className="pt-5">
-                      <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
-                        {c.value}
-                      </p>
-                      <p className="text-sm font-medium">{c.label}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">{c.description}</p>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
-            </motion.div>
-          </motion.section>
-
-          {/* ── Architecture Decisions ────────────────── */}
-          <motion.section
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-100px" }}
-            variants={stagger}
-          >
-            <motion.h2 variants={fadeInUp} className="text-2xl font-bold tracking-tight">
-              Architecture Decisions
-            </motion.h2>
-            <motion.div variants={stagger} className="mt-6 space-y-3">
-              {ADRS.map((adr) => (
-                <motion.div key={adr.decision} variants={fadeInUp}>
-                  <Card>
-                    <CardContent className="flex flex-col gap-2 pt-5 sm:flex-row sm:items-start sm:gap-6">
-                      <div className="shrink-0">
-                        <Badge variant="outline" className="text-xs font-medium">
-                          {adr.decision}
-                        </Badge>
-                      </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium">{adr.choice}</p>
-                        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                          {adr.rationale}
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-sm font-semibold">{item.title}</p>
+                          <span className="text-xs text-muted-foreground">
+                            — {item.decision}
+                          </span>
+                        </div>
+                        <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+                          {item.rationale}
                         </p>
                       </div>
                     </CardContent>
@@ -543,29 +495,42 @@ export default function AboutPage() {
             </motion.div>
           </motion.section>
 
-          {/* ── Security & Code Quality ───────────────── */}
+          {/* ── Testing ──────────────────────────────── */}
           <motion.section
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: "-100px" }}
             variants={stagger}
           >
-            <motion.h2 variants={fadeInUp} className="text-2xl font-bold tracking-tight">
-              Security & Code Quality
+            <motion.h2
+              variants={fadeInUp}
+              className="text-2xl font-bold tracking-tight"
+            >
+              Testing
             </motion.h2>
-            <motion.div variants={stagger} className="mt-6 grid gap-4 sm:grid-cols-2">
+            <motion.div
+              variants={stagger}
+              className="mt-6 grid gap-4 sm:grid-cols-2"
+            >
               <motion.div variants={fadeInUp}>
                 <Card className="h-full">
                   <CardHeader className="pb-2">
                     <CardTitle className="flex items-center gap-2 text-sm">
-                      <Shield className="size-4 text-red-500" />
-                      Three-Layer Prompt Defense
+                      <TestTube className="size-4 text-emerald-500" />
+                      701 Tests
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2 text-xs text-muted-foreground">
-                    <p><strong className="text-foreground">Layer 1:</strong> Input sanitization strips control characters and detects injection patterns</p>
-                    <p><strong className="text-foreground">Layer 2:</strong> System prompt isolation with defensive instructions and clear role boundaries</p>
-                    <p><strong className="text-foreground">Layer 3:</strong> Output validation via two-tier safety classifier on every generated message</p>
+                    <p>
+                      Full coverage across safety classification, phase routing,
+                      tool execution, API endpoints, graph traversal, and
+                      consent enforcement.
+                    </p>
+                    <p>
+                      Includes end-to-end journey tests from PENDING through all
+                      5 phases and back, plus concurrent patient isolation
+                      checks.
+                    </p>
                   </CardContent>
                 </Card>
               </motion.div>
@@ -573,21 +538,28 @@ export default function AboutPage() {
                 <Card className="h-full">
                   <CardHeader className="pb-2">
                     <CardTitle className="flex items-center gap-2 text-sm">
-                      <Gauge className="size-4 text-emerald-500" />
-                      Testing Coverage
+                      <Shield className="size-4 text-red-500" />
+                      113 Adversarial Prompts
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2 text-xs text-muted-foreground">
-                    <p><strong className="text-foreground">701 tests</strong> covering safety, routing, tools, API, graph, consent, and adversarial scenarios</p>
-                    <p><strong className="text-foreground">113 adversarial prompts</strong> testing injection attacks, clinical boundaries, crisis detection, and edge cases</p>
-                    <p><strong className="text-foreground">Full journey tests</strong> from PENDING through all 5 phases and back</p>
+                    <p>
+                      Parametrized adversarial suite covering prompt injection,
+                      clinical boundary violations, crisis scenario detection,
+                      and identity manipulation attempts.
+                    </p>
+                    <p>
+                      Three-layer defense: input sanitization, system prompt
+                      isolation, and output validation via the two-tier
+                      classifier.
+                    </p>
                   </CardContent>
                 </Card>
               </motion.div>
             </motion.div>
           </motion.section>
 
-          {/* ── Known Limitations ─────────────────────── */}
+          {/* ── Trade-offs ────────────────────────────── */}
           <motion.section
             initial="hidden"
             whileInView="visible"
@@ -595,46 +567,54 @@ export default function AboutPage() {
             variants={stagger}
             className="pb-10"
           >
-            <motion.h2 variants={fadeInUp} className="text-2xl font-bold tracking-tight">
-              Known Limitations & Next Steps
+            <motion.h2
+              variants={fadeInUp}
+              className="text-2xl font-bold tracking-tight"
+            >
+              Trade-offs
             </motion.h2>
+            <motion.p
+              variants={fadeInUp}
+              className="mt-2 text-sm text-muted-foreground"
+            >
+              Intentional scoping decisions for a demo context — each one has a
+              clear production path.
+            </motion.p>
             <motion.div variants={fadeInUp} className="mt-4">
               <Card>
-                <CardContent className="grid gap-4 pt-5 sm:grid-cols-2">
-                  <div>
-                    <p className="text-sm font-medium">Current Trade-offs</p>
-                    <ul className="mt-2 space-y-1.5 text-xs text-muted-foreground">
-                      <li className="flex items-start gap-2">
-                        <span className="mt-1 size-1.5 shrink-0 rounded-full bg-amber-500" />
-                        SQLite for demo simplicity — production would use PostgreSQL
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <span className="mt-1 size-1.5 shrink-0 rounded-full bg-amber-500" />
-                        In-memory checkpointer — production would use AsyncPostgresSaver
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <span className="mt-1 size-1.5 shrink-0 rounded-full bg-amber-500" />
-                        Scheduled follow-ups designed but not wired to cron trigger
-                      </li>
-                    </ul>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium">What I&apos;d Build Next</p>
-                    <ul className="mt-2 space-y-1.5 text-xs text-muted-foreground">
-                      <li className="flex items-start gap-2">
-                        <span className="mt-1 size-1.5 shrink-0 rounded-full bg-emerald-500" />
-                        Clinician-visible conversation summaries in dashboard
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <span className="mt-1 size-1.5 shrink-0 rounded-full bg-emerald-500" />
-                        Outcome analytics — adherence trends over time
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <span className="mt-1 size-1.5 shrink-0 rounded-full bg-emerald-500" />
-                        FHIR integration for EHR interoperability
-                      </li>
-                    </ul>
-                  </div>
+                <CardContent className="pt-5">
+                  <ul className="space-y-2.5 text-sm text-muted-foreground">
+                    <li className="flex items-start gap-2">
+                      <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-amber-500" />
+                      <span>
+                        <strong className="text-foreground">
+                          SQLite over PostgreSQL
+                        </strong>{" "}
+                        — simplified deployment for demo; production would use
+                        Postgres with connection pooling
+                      </span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-amber-500" />
+                      <span>
+                        <strong className="text-foreground">
+                          In-memory checkpointer
+                        </strong>{" "}
+                        — sufficient for demo conversations; production would
+                        use persistent state storage
+                      </span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-amber-500" />
+                      <span>
+                        <strong className="text-foreground">
+                          Manual re-engagement trigger
+                        </strong>{" "}
+                        — the re-engagement flow is fully built and testable;
+                        production would wire it to a cron scheduler
+                      </span>
+                    </li>
+                  </ul>
                 </CardContent>
               </Card>
             </motion.div>
