@@ -31,8 +31,9 @@ import {
 } from "@/lib/api";
 import type { Goal, Message, AdherenceStats, Phase, SafetyResult, ToolCall } from "@/lib/types";
 import Link from "next/link";
-import { PanelLeft, Heart, LogOut, Loader2, LayoutDashboard, Info, MessageSquare, ArrowRight } from "lucide-react";
+import { PanelLeft, Heart, LogOut, Loader2, LayoutDashboard, Info, MessageSquare, ArrowRight, User } from "lucide-react";
 import { HeroPreviewPlayer } from "@/components/hero-preview-player";
+import { authLogin } from "@/lib/api";
 
 export default function Home() {
   // ── Demo mode state ────────────────────────────────────────────
@@ -43,7 +44,7 @@ export default function Home() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // ── Real mode state ────────────────────────────────────────────
-  const { user, loading: authLoading, signOut } = useAuth();
+  const { user, setUser, loading: authLoading, signOut } = useAuth();
   const [profile, setProfile] = useState<ApiProfile | null>(null);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [adherence, setAdherence] = useState<AdherenceStats>({
@@ -134,6 +135,141 @@ export default function Home() {
     }
   }, [currentPatientId, refetchProfile]);
 
+  // ── Landing page (shown before auth / on first visit) ────────────
+  if (showLanding && (DEMO_MODE || !user)) {
+    const demoAccounts = [
+      { email: "sarah@demo.com", name: "Sarah", phase: "Active" },
+      { email: "marcus@demo.com", name: "Marcus", phase: "Onboarding" },
+      { email: "elena@demo.com", name: "Elena", phase: "Re-engaging" },
+    ];
+
+    const handleDemoLogin = async (email: string) => {
+      try {
+        const { user: loggedIn } = await authLogin(email, "password123");
+        setUser(loggedIn);
+        setShowLanding(false);
+      } catch {
+        // Fall through to demo mode
+        setShowLanding(false);
+      }
+    };
+
+    return (
+      <div className="flex h-full flex-col">
+        <header className="flex h-13 shrink-0 items-center justify-between border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+          <div className="flex items-center gap-2">
+            <div className="flex size-7 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900">
+              <Heart className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <h1 className="text-sm font-semibold tracking-tight">Stride</h1>
+          </div>
+          <div className="flex items-center gap-2">
+            <Link href="/about">
+              <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground">
+                <Info className="size-3.5" />
+                <span className="hidden sm:inline">How It Was Built</span>
+              </Button>
+            </Link>
+            <Link href="/dashboard">
+              <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground">
+                <LayoutDashboard className="size-3.5" />
+                <span className="hidden sm:inline">Dashboard</span>
+              </Button>
+            </Link>
+          </div>
+        </header>
+
+        <div className="flex flex-1 overflow-auto">
+          <div className="mx-auto flex w-full max-w-6xl flex-col items-center gap-10 px-4 py-10 lg:flex-row lg:items-center lg:gap-16 lg:py-0">
+            {/* Left: branding + video */}
+            <div className="flex-1 space-y-6 text-center lg:text-left">
+              <div>
+                <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-2xl bg-emerald-100 lg:mx-0 dark:bg-emerald-900">
+                  <Heart className="size-7 text-emerald-600 dark:text-emerald-400" />
+                </div>
+                <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+                  Stride
+                </h2>
+                <p className="mt-3 max-w-lg text-base text-muted-foreground lg:mx-0">
+                  An AI wellness coaching agent that helps patients stick to
+                  their exercise programs — with safety-first architecture,
+                  deterministic phase routing, and two-tier output
+                  classification.
+                </p>
+              </div>
+              <div className="hidden lg:block">
+                <HeroPreviewPlayer />
+              </div>
+            </div>
+
+            {/* Right: auth + demo */}
+            <div className="w-full max-w-sm shrink-0 space-y-5">
+              {/* Demo accounts */}
+              <div className="rounded-xl border bg-card p-5 shadow-sm">
+                <p className="mb-3 text-sm font-medium">Try as a demo patient</p>
+                <div className="space-y-2">
+                  {demoAccounts.map((demo) => (
+                    <button
+                      key={demo.email}
+                      type="button"
+                      onClick={() => DEMO_MODE ? setShowLanding(false) : handleDemoLogin(demo.email)}
+                      className="flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors hover:bg-muted"
+                    >
+                      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-xs font-semibold text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300">
+                        {demo.name[0]}
+                      </span>
+                      <span className="flex-1">
+                        <span className="text-sm font-medium">{demo.name}</span>
+                        <span className="ml-2 text-xs text-muted-foreground">{demo.phase}</span>
+                      </span>
+                      <ArrowRight className="size-3.5 text-muted-foreground" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Sign in */}
+              {!DEMO_MODE && (
+                <div className="rounded-xl border bg-card p-5 shadow-sm">
+                  <p className="mb-3 text-sm font-medium">Sign in with your account</p>
+                  <Button
+                    onClick={() => setShowLanding(false)}
+                    variant="outline"
+                    className="w-full gap-2"
+                  >
+                    <User className="size-4" />
+                    Sign In / Sign Up
+                  </Button>
+                </div>
+              )}
+
+              {/* Links */}
+              <div className="flex items-center justify-center gap-3">
+                <Link href="/about">
+                  <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground">
+                    <Info className="size-3.5" />
+                    How It Was Built
+                  </Button>
+                </Link>
+                <Link href="/dashboard">
+                  <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground">
+                    <LayoutDashboard className="size-3.5" />
+                    Dashboard
+                  </Button>
+                </Link>
+              </div>
+            </div>
+
+            {/* Video on mobile (below auth) */}
+            <div className="w-full lg:hidden">
+              <HeroPreviewPlayer />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // ── Auth loading state ─────────────────────────────────────────
   if (!DEMO_MODE && authLoading) {
     return (
@@ -193,75 +329,6 @@ export default function Home() {
     displayAdherence = adherence;
     displayConversation = conversation;
     hasConsent = profile?.consent_given_at != null;
-  }
-
-  // ── Landing hero (shown on first visit) ─────────────────────────
-  if (showLanding) {
-    return (
-      <div className="flex h-full flex-col">
-        <header className="flex h-13 shrink-0 items-center justify-between border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-          <div className="flex items-center gap-2">
-            <div className="flex size-7 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900">
-              <Heart className="size-3.5 text-emerald-600 dark:text-emerald-400" />
-            </div>
-            <h1 className="text-sm font-semibold tracking-tight">
-              Stride
-            </h1>
-          </div>
-          <div className="flex items-center gap-2">
-            <Link href="/about">
-              <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground">
-                <Info className="size-3.5" />
-                <span className="hidden sm:inline">How It Was Built</span>
-              </Button>
-            </Link>
-            <Link href="/dashboard">
-              <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground">
-                <LayoutDashboard className="size-3.5" />
-                <span className="hidden sm:inline">Dashboard</span>
-              </Button>
-            </Link>
-          </div>
-        </header>
-
-        <div className="flex flex-1 flex-col items-center justify-center overflow-auto px-4 py-10">
-          <div className="w-full max-w-3xl space-y-8 text-center">
-            <div>
-              <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-2xl bg-emerald-100 dark:bg-emerald-900">
-                <Heart className="size-7 text-emerald-600 dark:text-emerald-400" />
-              </div>
-              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-                Stride
-              </h2>
-              <p className="mx-auto mt-3 max-w-xl text-base text-muted-foreground">
-                An AI wellness coaching agent that helps patients stick to their
-                exercise programs — with safety-first architecture, deterministic
-                phase routing, and two-tier output classification.
-              </p>
-            </div>
-
-            <HeroPreviewPlayer />
-
-            <div className="flex items-center justify-center gap-3">
-              <Button
-                onClick={() => setShowLanding(false)}
-                className="gap-2 bg-emerald-600 text-white hover:bg-emerald-700"
-              >
-                <MessageSquare className="size-4" />
-                Start Chatting
-                <ArrowRight className="size-3.5" />
-              </Button>
-              <Link href="/about">
-                <Button variant="outline" className="gap-2">
-                  <Info className="size-4" />
-                  How It Was Built
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
   }
 
   return (
