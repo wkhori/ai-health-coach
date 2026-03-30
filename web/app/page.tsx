@@ -179,8 +179,8 @@ export default function Home() {
           </div>
         </header>
 
-        <div className="flex flex-1 overflow-auto">
-          <div className="mx-auto flex w-full max-w-6xl flex-col items-center gap-10 px-4 py-10 lg:flex-row lg:items-center lg:gap-16 lg:py-0">
+        <div className="flex flex-1 items-center justify-center overflow-auto">
+          <div className="mx-auto flex w-full max-w-5xl flex-col items-center gap-10 px-6 py-10 lg:flex-row lg:items-center lg:gap-14">
             {/* Left: branding + video */}
             <div className="flex-1 space-y-6 text-center lg:text-left">
               <div>
@@ -190,7 +190,7 @@ export default function Home() {
                 <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
                   Stride
                 </h2>
-                <p className="mt-3 max-w-lg text-base text-muted-foreground lg:mx-0">
+                <p className="mx-auto mt-3 max-w-lg text-base text-muted-foreground lg:mx-0">
                   An AI wellness coaching agent that helps patients stick to
                   their exercise programs — with safety-first architecture,
                   deterministic phase routing, and two-tier output
@@ -203,7 +203,7 @@ export default function Home() {
             </div>
 
             {/* Right: auth + demo */}
-            <div className="w-full max-w-sm shrink-0 space-y-5">
+            <div className="w-full max-w-sm shrink-0 space-y-4">
               {/* Demo accounts */}
               <div className="rounded-xl border bg-card p-5 shadow-sm">
                 <p className="mb-3 text-sm font-medium">Try as a demo patient</p>
@@ -242,22 +242,6 @@ export default function Home() {
                   </Button>
                 </div>
               )}
-
-              {/* Links */}
-              <div className="flex items-center justify-center gap-3">
-                <Link href="/about">
-                  <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground">
-                    <Info className="size-3.5" />
-                    How It Was Built
-                  </Button>
-                </Link>
-                <Link href="/dashboard">
-                  <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground">
-                    <LayoutDashboard className="size-3.5" />
-                    Dashboard
-                  </Button>
-                </Link>
-              </div>
             </div>
 
             {/* Video on mobile (below auth) */}
