@@ -24,7 +24,7 @@ const GREETINGS: Record<string, { title: string; subtitle: string }> = {
       "It's been a while! Whenever you're ready, we can restart your program or set new goals.",
   },
   PENDING: {
-    title: "Welcome to Health Coach",
+    title: "Welcome to Stride",
     subtitle:
       "Please accept the consent agreement above to begin your wellness journey.",
   },

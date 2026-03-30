@@ -518,12 +518,19 @@ async def chat_stream(
                 elif kind == "on_tool_end":
                     tool_name = event.get("name", "")
                     tool_output = event.get("data", {}).get("output", "")
+                    # Extract content from ToolMessage or similar objects
+                    if hasattr(tool_output, "content"):
+                        result_text = tool_output.content
+                    elif isinstance(tool_output, dict) and "content" in tool_output:
+                        result_text = tool_output["content"]
+                    else:
+                        result_text = str(tool_output)
                     yield {
                         "event": "message",
                         "data": json.dumps({
                             "type": "tool_end",
                             "tool": tool_name,
-                            "result": str(tool_output),
+                            "result": result_text,
                         }),
                     }
 

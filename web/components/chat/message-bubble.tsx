@@ -49,10 +49,29 @@ function FormatContent({ content, isUser }: { content: string; isUser: boolean }
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
+    const headingMatch = line.match(/^(#{1,3})\s+(.+)/);
     const bulletMatch = line.match(/^[\s]*[-•]\s+(.+)/);
     const numberedMatch = line.match(/^[\s]*\d+\.\s+(.+)/);
+    const isHr = /^[-*_]{3,}\s*$/.test(line.trim());
 
-    if (bulletMatch) {
+    if (isHr) {
+      flushList();
+      elements.push(<hr key={`hr-${i}`} className="my-2 border-border/50" />);
+    } else if (headingMatch) {
+      flushList();
+      const level = headingMatch[1].length;
+      const text = headingMatch[2];
+      const className = level === 1
+        ? "text-base font-semibold mt-2"
+        : level === 2
+          ? "text-[15px] font-semibold mt-2"
+          : "text-sm font-semibold mt-1.5";
+      elements.push(
+        <p key={`h-${i}`} className={className}>
+          {formatInline(text)}
+        </p>
+      );
+    } else if (bulletMatch) {
       if (listType !== "ul") flushList();
       listType = "ul";
       listItems.push(<li key={`li-${i}`}>{formatInline(bulletMatch[1])}</li>);

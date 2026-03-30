@@ -205,7 +205,7 @@ export default function Home() {
               <Heart className="size-3.5 text-emerald-600 dark:text-emerald-400" />
             </div>
             <h1 className="text-sm font-semibold tracking-tight">
-              AI Health Coach
+              Stride
             </h1>
           </div>
           <div className="flex items-center gap-2">
@@ -231,7 +231,7 @@ export default function Home() {
                 <Heart className="size-7 text-emerald-600 dark:text-emerald-400" />
               </div>
               <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-                AI Health Coach
+                Stride
               </h2>
               <p className="mx-auto mt-3 max-w-xl text-base text-muted-foreground">
                 An AI wellness coaching agent that helps patients stick to their
@@ -298,7 +298,7 @@ export default function Home() {
               <Heart className="size-3.5 text-emerald-600 dark:text-emerald-400" />
             </div>
             <h1 className="text-sm font-semibold tracking-tight">
-              Health Coach
+              Stride
             </h1>
           </div>
 

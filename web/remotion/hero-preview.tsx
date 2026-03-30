@@ -23,9 +23,12 @@ function TitleScene() {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  // Word animations — slide in from opposite sides
-  const words = ["AI", "Health", "Coach"];
-  const directions = [-1, 1, -1];
+  const titleEntrance = spring({
+    frame,
+    fps,
+    config: { damping: 14, stiffness: 80 },
+    delay: 5,
+  });
 
   const lineExpand = spring({
     frame,
@@ -34,7 +37,7 @@ function TitleScene() {
     delay: 20,
   });
 
-  const subtitleOpacity = interpolate(frame, [45, 65], [0, 0.7], {
+  const subtitleOpacity = interpolate(frame, [35, 55], [0, 0.7], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
@@ -55,42 +58,16 @@ function TitleScene() {
     >
       <div
         style={{
-          display: "flex",
-          gap: 20,
-          alignItems: "center",
+          fontFamily: FONTS.heading,
+          fontSize: 96,
+          fontWeight: 700,
+          color: COLORS.emerald400,
+          transform: `translateY(${interpolate(titleEntrance, [0, 1], [30, 0])}px) scale(${interpolate(titleEntrance, [0, 1], [0.9, 1])})`,
+          opacity: interpolate(titleEntrance, [0, 1], [0, 1]),
+          letterSpacing: "-0.04em",
         }}
       >
-        {words.map((word, i) => {
-          const entrance = spring({
-            frame,
-            fps,
-            config: { damping: 14, stiffness: 80 },
-            delay: i * 8,
-          });
-          const translateX = interpolate(
-            entrance,
-            [0, 1],
-            [60 * directions[i], 0]
-          );
-          const opacity = interpolate(entrance, [0, 1], [0, 1]);
-
-          return (
-            <span
-              key={word}
-              style={{
-                fontFamily: FONTS.heading,
-                fontSize: 72,
-                fontWeight: 700,
-                color: i === 1 ? COLORS.emerald400 : "#ffffff",
-                transform: `translateX(${translateX}px)`,
-                opacity,
-                letterSpacing: "-0.03em",
-              }}
-            >
-              {word}
-            </span>
-          );
-        })}
+        Stride
       </div>
 
       {/* Accent line */}
@@ -101,7 +78,7 @@ function TitleScene() {
           left: "50%",
           transform: "translateX(-50%)",
           height: 2,
-          width: interpolate(lineExpand, [0, 1], [0, 300]),
+          width: interpolate(lineExpand, [0, 1], [0, 240]),
           backgroundColor: COLORS.accent,
           borderRadius: 1,
         }}

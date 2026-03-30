@@ -9,9 +9,9 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "AI Health Coach",
+  title: "Stride",
   description:
-    "Your personal AI wellness coach for building healthy exercise habits.",
+    "AI wellness coaching that helps patients stick to their exercise programs.",
 };
 
 export default function RootLayout({

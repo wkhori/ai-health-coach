@@ -67,7 +67,7 @@ export function LoginForm() {
             <Heart className="size-6 text-emerald-600 dark:text-emerald-400" />
           </div>
           <h1 className="text-xl font-semibold tracking-tight">
-            AI Health Coach
+            Stride
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {isSignUp

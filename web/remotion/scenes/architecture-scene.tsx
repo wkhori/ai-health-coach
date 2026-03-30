@@ -273,7 +273,7 @@ export const ArchitectureScene: React.FC = () => {
               marginTop: 3,
             }}
           >
-            Health Coach
+            Stride
           </div>
         </div>
       </div>

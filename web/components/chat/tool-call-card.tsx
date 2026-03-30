@@ -60,10 +60,17 @@ export function ToolCallCard({ toolCall }: { toolCall: ToolCall }) {
           </div>
         )}
         {toolCall.result && toolCall.status === "complete" && (
-          <div className="mt-2 rounded-md bg-emerald-50/50 p-2 font-mono text-[11px] text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200">
-            {typeof toolCall.result === "string"
-              ? toolCall.result
-              : JSON.stringify(toolCall.result, null, 2)}
+          <div className="mt-2 rounded-md bg-emerald-50/50 p-2 text-xs text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200">
+            {(() => {
+              let text = typeof toolCall.result === "string"
+                ? toolCall.result
+                : JSON.stringify(toolCall.result, null, 2);
+              // Truncate long tool results to a short confirmation
+              if (text.length > 120) {
+                text = text.slice(0, 120).trimEnd() + "…";
+              }
+              return <span className="whitespace-pre-wrap">{text}</span>;
+            })()}
           </div>
         )}
       </CardContent>

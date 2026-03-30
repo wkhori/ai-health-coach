@@ -70,7 +70,7 @@ export const IntroScene: React.FC = () => {
           letterSpacing: "-0.03em",
         }}
       >
-        AI Health Coach
+        Stride
       </div>
 
       {/* Subtitle */}
